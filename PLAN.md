@@ -33,27 +33,17 @@ Ollama is internal-only (used by ZeroClaw, not exposed separately). Models are s
 └──────────────────────────────────────────────────┘
 ```
 
-## Step 1: Install Docker on Linux Mint 22 (LATER)
-
-Install Docker Engine + Compose plugin from Docker's official Ubuntu Noble repo, add user to docker group.
-
-## Step 2: Create Discord Bot (LATER)
-
-Create Discord application, get bot token, enable Message Content Intent, invite bot to server.
-
-**Note:** You need ONE Discord bot token. Both ZeroClaw and Dashboard Bot can use the same token OR you can create two separate bots.
-
-## Step 3: Create project structure and files (START HERE)
+## Project structure
 
 ```
-~/Documents/aiclaudeprojects/zeroclaw-stack/
-├── PLAN.md                     # this plan (v3)
-├── README.md                   # progress tracker with checkboxes
+├── PLAN.md
+├── README.md
 ├── docker-compose.yml          # 3 services: ollama + zeroclaw + dashbot
 ├── .env                        # Discord token, model name, ports
+├── setup.sh                    # automated installer
 ├── zeroclaw/
 │   ├── Dockerfile              # prebuilt binary from GitHub releases
-│   ├── config.toml             # ZeroClaw config: Ollama provider + Discord
+│   ├── config.toml             # Ollama provider + Discord
 │   └── workspace/              # persistent workspace for agent projects
 ├── dashbot/
 │   ├── Dockerfile              # Python slim image
@@ -64,7 +54,7 @@ Create Discord application, get bot token, enable Message Content Intent, invite
     └── models/                 # persistent model storage (bind mount)
 ```
 
-### 3a. docker-compose.yml (3 services)
+## Services
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
@@ -75,62 +65,19 @@ Create Discord application, get bot token, enable Message Content Intent, invite
 - Ollama internal only (`http://ollama:11434` within Docker network)
 - ZeroClaw mounts config.toml (read-only) + workspace/ (read-write)
 - Dashboard bot mounts data/ for persistent SQLite
-- Both bots connect to Discord
 
-### 3b. ZeroClaw Dockerfile (prebuilt binary)
+## ZeroClaw Dockerfile
 
 - Base image: `ubuntu:24.04`
 - Downloads prebuilt binary from GitHub releases (v0.1.6, x86_64)
 - Installs runtime dependencies (`ca-certificates`, `libssl3`, `git`, `curl`)
 
-### 3c. Dashboard Bot (Python)
+## Dashboard Bot
 
-Simple Discord bot with slash commands:
-- `/status` — Ollama health, ZeroClaw config, container info
-- `/tasks` — List all tasks
-- `/add <task>` — Add new task
-- `/done <id>` — Mark task complete
-- `/delete <id>` — Remove task
+Simple Discord bot with slash commands (`/status`, `/tasks`, `/add`, `/done`, `/delete`).
 
-Uses:
-- `discord.py` for Discord integration
-- `aiosqlite` for async SQLite
-- `httpx` for health checks
-
-### 3d. Config files
-
-- `.env` — Discord token, model name, ports
-- `zeroclaw/config.toml` — Ollama provider + Discord channel + workspace path
-
-## Step 4: Build and launch (after Steps 1 & 2)
-
-```bash
-cd ~/Documents/aiclaudeprojects/zeroclaw-stack
-docker compose up -d --build
-docker compose exec ollama ollama pull llama3.2:3b
-```
-
-## Step 5: Verify
-
-1. `docker compose ps` — all 3 containers running
-2. `docker compose logs zeroclaw` — agent connected
-3. `docker compose logs dashbot` — bot connected
-4. Message ZeroClaw in Discord — should respond via LLM
-5. Use `/status` command — should show dashboard
-6. `docker compose exec ollama ollama list` — see models
-
-## Swapping models (no rebuild needed)
-
-```bash
-docker compose exec ollama ollama pull mistral:7b
-# Edit zeroclaw/config.toml → change model name
-docker compose restart zeroclaw
-```
+Uses: `discord.py`, `aiosqlite`, `httpx`.
 
 ## Portability
 
-Copy `zeroclaw-stack/` folder to any Docker machine → update `.env` → `docker compose up -d`.
-
-## RAM note
-
-16GB RAM. Comfortable with 3B-7B models. 13B would be tight. Dashboard bot adds ~50MB.
+Copy folder to any Docker machine → update `.env` → `docker compose up -d --build`.
