@@ -52,7 +52,7 @@ Create Discord application, get bot token, enable Message Content Intent, invite
 ├── docker-compose.yml          # 3 services: ollama + zeroclaw + dashbot
 ├── .env                        # Discord token, model name, ports
 ├── zeroclaw/
-│   ├── Dockerfile              # multi-stage build from GitHub source
+│   ├── Dockerfile              # prebuilt binary from GitHub releases
 │   ├── config.toml             # ZeroClaw config: Ollama provider + Discord
 │   └── workspace/              # persistent workspace for agent projects
 ├── dashbot/
@@ -77,11 +77,11 @@ Create Discord application, get bot token, enable Message Content Intent, invite
 - Dashboard bot mounts data/ for persistent SQLite
 - Both bots connect to Discord
 
-### 3b. ZeroClaw Dockerfile (multi-stage)
+### 3b. ZeroClaw Dockerfile (prebuilt binary)
 
-- **Stage 1 (builder):** `rust:1.83-slim-bookworm`, clone repo, `cargo build --release --locked`
-- **Stage 2 (runtime):** `debian:bookworm-slim` + ~3.4MB binary + dev tools
-- Final image ~100MB
+- Base image: `ubuntu:24.04`
+- Downloads prebuilt binary from GitHub releases (v0.1.6, x86_64)
+- Installs runtime dependencies (`ca-certificates`, `libssl3`, `git`, `curl`)
 
 ### 3c. Dashboard Bot (Python)
 

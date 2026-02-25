@@ -130,7 +130,7 @@ ZEROCLAW_PORT=8080
 docker compose up -d --build
 ```
 
-First build takes a few minutes (Rust compilation for ZeroClaw + Python dependencies for Dashboard Bot).
+First build takes a minute or two (downloading the ZeroClaw prebuilt binary + Python dependencies for Dashboard Bot).
 
 Pull the default LLM model:
 ```bash
@@ -351,7 +351,7 @@ Copy the entire `container-automata/` folder to any Docker machine → update `.
 
 - [x] Project structure created
 - [x] docker-compose.yml (3 services)
-- [x] ZeroClaw Dockerfile (multi-stage Rust build)
+- [x] ZeroClaw Dockerfile (prebuilt binary)
 - [x] zeroclaw/config.toml
 - [x] .env template
 - [x] Dashboard Bot Dockerfile
