@@ -1,0 +1,44 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ./ollama/models:/root/.ollama
+    restart: unless-stopped
+    # Uncomment below for NVIDIA GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+  zeroclaw:
+    build:
+      context: ./zeroclaw
+      dockerfile: Dockerfile
+    container_name: zeroclaw
+    ports:
+      - "${ZEROCLAW_PORT:-8080}:8080"
+    volumes:
+      - ./zeroclaw/config.toml:/root/.zeroclaw/config.toml:ro
+      - ./zeroclaw/workspace:/root/.zeroclaw/workspace
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+    depends_on:
+      - ollama
+    restart: unless-stopped
+  dashbot:
+    build:
+      context: ./dashbot
+      dockerfile: Dockerfile
+    container_name: dashbot
+    volumes:
+      - ./dashbot/data:/app/data
+      - ./zeroclaw/config.toml:/app/zeroclaw-config.toml:ro
+    environment:
+      - DISCORD_BOT_TOKEN=${DASHBOT_TOKEN}
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: unless-stopped

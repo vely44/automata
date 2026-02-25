@@ -1,0 +1,47 @@
+# ZeroClaw Configuration (v3)
+# ============================
+
+# Provider: Ollama (running in sibling container)
+# Note: For custom Ollama URL, use the custom: prefix
+default_provider = "ollama"
+api_url = "http://ollama:11434"
+default_model = "mistral:7b"
+default_temperature = 0.7
+
+# Gateway
+[gateway]
+port = 8080
+host = "0.0.0.0"
+require_pairing = true
+allow_public_bind = true  # Required for Docker networking
+
+# Discord channel
+# Bot token is passed via DISCORD_BOT_TOKEN env variable
+# ZeroClaw auto-detects and connects when token is present
+
+# Autonomy
+[autonomy]
+level = "supervised"
+workspace_only = true
+allowed_commands = ["git", "npm", "cargo", "ls", "cat", "grep", "mkdir", "cp", "mv"]
+forbidden_paths = ["/etc", "/root", "/proc", "/sys"]
+max_actions_per_hour = 20
+max_cost_per_day_cents = 500
+
+# Memory
+[memory]
+backend = "sqlite"
+auto_save = true
+
+# Runtime
+[runtime]
+kind = "native"
+
+[channels_config]
+cli = true
+
+[channels_config.discord]
+bot_token = "DISCORD_BOT_TOKEN"
+allowed_users = ["*"]
+listen_to_bots = false
+mention_only = false

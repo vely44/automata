@@ -1,0 +1,7 @@
+.env
+ollama/models/
+*.log
+tests.txt
+*.db
+*.db-shm
+*.db-wal
