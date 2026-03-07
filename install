@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# install — Nanobot + Dashboard Bot setup wizard
-# User-friendly installer for non-technical engineers
-# Run once on a fresh machine: ./install
+# automata — Nanobot + DashBot installer
+# AI agent stack with Discord integration
+# Run: ./install
 
 set -euo pipefail
+
 
 # ── Colors ────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -53,10 +54,10 @@ fi
 # ══════════════════════════════════════════════════════════════════════════
 
 clear
-log_header "Welcome to Nanobot Setup"
+log_header "Welcome to automata Setup"
 
 echo -e "${BOLD}What is this?${RESET}"
-echo "  This installer will set up a Discord AI agent (Nanobot) on your machine."
+echo "  This installer will set up automata — a Discord AI agent with task management."
 echo "  No technical knowledge needed — just answer a few questions, and we'll handle the rest."
 echo ""
 echo -e "${BOLD}What you need:${RESET}"

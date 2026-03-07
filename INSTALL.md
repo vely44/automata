@@ -1,6 +1,6 @@
-# Installation Guide — Nanobot + Dashboard Bot
+# Installation Guide — automata
 
-This guide walks you through setting up Nanobot (an AI agent) on your Linux machine. No technical knowledge required.
+This guide walks you through setting up automata (Nanobot + DashBot) on your Linux machine. No technical knowledge required.
 
 ## Quick Start
 

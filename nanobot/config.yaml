@@ -1,6 +1,8 @@
-# Nanobot Configuration
-# =====================
-# Ultra-lightweight Python AI agent with Discord support
+# automata — Nanobot Configuration
+# =================================
+# AI-powered Discord agent with cloud LLM integration
+# Nanobot: Intelligent agent execution engine
+# DashBot: Discord dashboard & task manager
 # Note: Discord token is read from DISCORD_BOT_TOKEN environment variable
 
 # LLM Provider Configuration
