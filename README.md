@@ -1,30 +1,45 @@
-# container-automata v5
+```
+   ▄██████████████████████████████████▄
+   █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█
+   █░  ▄▄▄   ▄   ▄▄▄  ▄▄▄▄▄  ▄    ░░█
+   █░ ▐   ▌ ▐ ▌ ▐   ▌   █   ▐ ▌  ░░█
+   █░ ▐ ▀▀▀ ▐ ▌ ▐▀▀▀    █    ▐ ▌  ░░█
+   █░ ▐     ▐ ▌ ▐    ▌  █    ▐▄▄  ░░█
+   █░  ▄▄▄▄  ▀▄▄  ▀▀▀   █     ░░   ░░█
+   █░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░█
+   ▀██████████████████████████████████▀
+```
 
-A lightweight 2-container AI agent stack: **Nanobot** (Python AI agent) + **Dashboard Bot** (Python status/task manager). Nanobot calls cloud LLM APIs (Anthropic, OpenAI, etc.). All connected through Discord.
+# automata
 
-## Why Nanobot?
+A lightweight 2-container AI agent stack: **Nanobot** (Python AI agent) + **DashBot** (Python status/task manager). Nanobot calls cloud LLM APIs (Anthropic, OpenAI, etc.). All connected through Discord.
 
+## Features
+
+- **Nanobot** — Python AI agent with cloud LLM integration (Anthropic, OpenAI, Groq, etc.)
+- **DashBot** — Discord dashboard for system status and task management
 - **Python-based** — ~4,000 lines of code, fully readable and auditable
 - **No compilation** — runs instantly with Python pip install (vs. Rust compilation)
-- **Model-agnostic** — works with any LLM API (Anthropic, OpenAI, etc.)
+- **Model-agnostic** — works with any LLM API provider
 - **Lightweight** — minimal dependencies, fast startup, small Docker images
 - **Discord-native** — built-in Discord integration out of the box
 - **Portable** — copy folder to any Docker machine and run — no platform dependencies
 
 ```
-┌─────────────────────────────────────────┐
-│  Docker Network                         │
-│                                         │
-│  Nanobot ────► Cloud LLM API           │
-│      │         (Anthropic / OpenAI)     │
-│      │                                  │
-│      ├──────► Discord                   │
-│      │                                  │
-│  Dashboard Bot ──► Discord             │
-│      │                                  │
-│      ▼                                  │
-│  tasks.db                               │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  automata — Docker Network                   │
+│                                              │
+│  ┌─ Nanobot (AI Agent)                       │
+│  │  ├─► Cloud LLM API                       │
+│  │  │   (Anthropic/OpenAI/Groq)             │
+│  │  └─► Tools (bash, git, files)            │
+│  │                                           │
+│  ├─ DashBot (Discord Dashboard)             │
+│  │  └─► Task Management (SQLite)            │
+│  │                                           │
+│  └─► Discord (Shared Interface)             │
+│                                              │
+└──────────────────────────────────────────────┘
 ```
 
 ---
