@@ -1,15 +1,3 @@
-```
-  ╔════════════════════════════════════════════╗
-  ║                                            ║
-  ║  ▄▀▀▀  █  █  ▀█▀  ▄▀▄  █  █  ▄▀▀▀  ▄▀▀▀ ║
-  ║  █     █  █   █   █ █  ██ ██   █    █    ║
-  ║   ▀▀█  █▀▀█   █   █▀█  █▀▀▀█   ▀▀█   ▀▀█ ║
-  ║      █ █  █   █   █ █  █   █      █     █║
-  ║  ▀▀▀  █  █   █   █ █  █   █  ▀▀▀  ▀▀▀  ║
-  ║                                            ║
-  ╚════════════════════════════════════════════╝
-```
-
 # Installation Guide — automata
 
 This guide walks you through setting up automata (Nanobot + DashBot) on your Linux machine. No technical knowledge required.

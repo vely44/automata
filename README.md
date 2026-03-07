@@ -1,15 +1,3 @@
-```
-  ╔════════════════════════════════════════════╗
-  ║                                            ║
-  ║  ▄▀▀▀  █  █  ▀█▀  ▄▀▄  █  █  ▄▀▀▀  ▄▀▀▀ ║
-  ║  █     █  █   █   █ █  ██ ██   █    █    ║
-  ║   ▀▀█  █▀▀█   █   █▀█  █▀▀▀█   ▀▀█   ▀▀█ ║
-  ║      █ █  █   █   █ █  █   █      █     █║
-  ║  ▀▀▀  █  █   █   █ █  █   █  ▀▀▀  ▀▀▀  ║
-  ║                                            ║
-  ╚════════════════════════════════════════════╝
-```
-
 # automata
 
 A lightweight 2-container AI agent stack: **Nanobot** (Python AI agent) + **DashBot** (Python status/task manager). Nanobot calls cloud LLM APIs (Anthropic, OpenAI, etc.). All connected through Discord.
