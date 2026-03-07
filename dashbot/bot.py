@@ -1,10 +1,10 @@
 """
-ZeroClaw Dashboard Bot
-======================
+Nanobot Dashboard Bot
+=====================
 A Discord bot for status monitoring and task management.
 
 Commands:
-  /status  - Show ZeroClaw config and system info
+  /status  - Show Nanobot config and system info
   /tasks   - List all tasks
   /add     - Add a new task
   /done    - Mark a task as completed
@@ -12,19 +12,16 @@ Commands:
 """
 
 import os
-import asyncio
 from datetime import datetime
 
 import discord
 from discord import app_commands
 import aiosqlite
-import httpx
 
 # Configuration from environment
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-ZEROCLAW_URL = os.getenv("ZEROCLAW_URL", "http://zeroclaw:8080")
 DATABASE_PATH = "/app/data/tasks.db"
-ZEROCLAW_CONFIG_PATH = "/app/zeroclaw-config.toml"
+NANOBOT_CONFIG_PATH = "/app/nanobot-config.yaml"
 
 
 # Discord bot setup
@@ -93,32 +90,24 @@ async def delete_task(task_id: int):
 
 
 # ============================================================
-# Health Check Functions
+# Config Functions
 # ============================================================
 
-async def check_zeroclaw_health():
-    """Check ZeroClaw API health."""
+def read_nanobot_config():
+    """Read Nanobot config file."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as http:
-            response = await http.get(f"{ZEROCLAW_URL}/health")
-            if response.status_code == 200:
-                return {"status": "online"}
-            return {"status": "error", "code": response.status_code}
-    except Exception as e:
-        return {"status": "offline", "error": str(e)}
-
-
-def read_zeroclaw_config():
-    """Read ZeroClaw config file."""
-    try:
-        with open(ZEROCLAW_CONFIG_PATH, "r") as f:
+        with open(NANOBOT_CONFIG_PATH, "r") as f:
             content = f.read()
-        # Simple parsing for display
+        # Simple parsing for display (YAML)
         config = {}
         for line in content.split("\n"):
-            if "=" in line and not line.strip().startswith("#") and not line.strip().startswith("["):
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip().strip('"')
+            if ":" in line and not line.strip().startswith("#"):
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip().strip('"').strip("'")
+                    if key and value:
+                        config[key] = value
         return config
     except Exception as e:
         return {"error": str(e)}
@@ -128,39 +117,34 @@ def read_zeroclaw_config():
 # Discord Commands
 # ============================================================
 
-@tree.command(name="status", description="Show system status and health")
+@tree.command(name="status", description="Show dashboard status and task summary")
 async def status_command(interaction: discord.Interaction):
-    """Display system status including ZeroClaw info."""
+    """Display dashboard status and task summary."""
     await interaction.response.defer()
 
-    # Check ZeroClaw
-    zc_health = await check_zeroclaw_health()
-
-    # Read ZeroClaw config
-    zc_config = read_zeroclaw_config()
+    # Read Nanobot config (for informational display)
+    nb_config = read_nanobot_config()
 
     # Build embed
-    is_healthy = zc_health["status"] == "online"
     embed = discord.Embed(
-        title="System Status",
-        color=discord.Color.green() if is_healthy else discord.Color.red(),
+        title="Dashboard Status",
+        color=discord.Color.blue(),
         timestamp=datetime.now()
     )
 
-    # ZeroClaw status
-    zc_status = "Online" if is_healthy else "Offline"
-    if "error" not in zc_config:
-        provider = zc_config.get("default_provider", "unknown")
-        model = zc_config.get("default_model", "unknown")
+    # Nanobot config info
+    if "error" not in nb_config:
+        provider = nb_config.get("provider", "unknown")
+        model = nb_config.get("model", "unknown")
         embed.add_field(
-            name="ZeroClaw",
-            value=f"Status: {zc_status}\nProvider: `{provider}`\nModel: `{model}`",
+            name="Nanobot Config",
+            value=f"Provider: `{provider}`\nModel: `{model}`",
             inline=False
         )
     else:
         embed.add_field(
-            name="ZeroClaw",
-            value=f"Status: {zc_status}\nConfig error: {zc_config['error']}",
+            name="Nanobot Config",
+            value=f"Error: {nb_config['error']}",
             inline=False
         )
 
