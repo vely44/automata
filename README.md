@@ -45,7 +45,7 @@ container-automata/
 ├── .env.example                # Template for .env
 ├── setup.sh                    # Automated installer
 ├── nanobot/
-│   ├── Dockerfile              # Python 3.11 slim base, installs nanobot via pip
+│   ├── Dockerfile              # Python 3.12 slim base, installs nanobot via pip
 │   ├── config.yaml             # LLM provider config + Discord settings
 │   └── workspace/              # Persistent workspace for agent projects
 └── dashbot/
@@ -59,7 +59,7 @@ container-automata/
 
 | Service | Language | Purpose | Config |
 |---------|----------|---------|--------|
-| **nanobot** | Python 3.11 | AI agent connected to Discord, calls cloud LLMs | `nanobot/config.yaml` |
+| **nanobot** | Python 3.12 | AI agent connected to Discord, calls cloud LLMs | `nanobot/config.yaml` |
 | **dashbot** | Python 3.12 | Status monitoring and task management | `.env` |
 
 **Details:**
