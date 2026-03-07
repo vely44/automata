@@ -1,0 +1,332 @@
+#!/usr/bin/env bash
+# install — Nanobot + Dashboard Bot setup wizard
+# User-friendly installer for non-technical engineers
+# Run once on a fresh machine: ./install
+
+set -euo pipefail
+
+# ── Colors ────────────────────────────────────────────────────────────────
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# ── Helper functions ──────────────────────────────────────────────────────
+log_header() {
+    echo -e "\n${BOLD}${CYAN}════════════════════════════════════════${RESET}"
+    echo -e "${BOLD}${CYAN}  $*${RESET}"
+    echo -e "${BOLD}${CYAN}════════════════════════════════════════${RESET}\n"
+}
+
+log_info() { echo -e "${CYAN}ℹ${RESET}  $*"; }
+log_ok() { echo -e "${GREEN}✓${RESET}  $*"; }
+log_warn() { echo -e "${YELLOW}⚠${RESET}  $*"; }
+log_error() { echo -e "${RED}✗${RESET}  $*" >&2; }
+log_section() { echo -e "\n${BOLD}→ $*${RESET}"; }
+log_input() { echo -e "${BLUE}?${RESET}  $*"; }
+
+exit_error() {
+    log_error "$*"
+    exit 1
+}
+
+# ── Detect Linux distro ───────────────────────────────────────────────────
+detect_distro() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        echo "${ID:-unknown}"
+    else
+        echo "unknown"
+    fi
+}
+
+# ── Check if running as root (we should use sudo instead) ──────────────────
+if [[ $EUID -eq 0 ]]; then
+    exit_error "Please run this script without sudo. It will ask for sudo when needed."
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 1: Welcome ───────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+clear
+log_header "Welcome to Nanobot Setup"
+
+echo -e "${BOLD}What is this?${RESET}"
+echo "  This installer will set up a Discord AI agent (Nanobot) on your machine."
+echo "  No technical knowledge needed — just answer a few questions, and we'll handle the rest."
+echo ""
+echo -e "${BOLD}What you need:${RESET}"
+echo "  • A Discord bot token (we'll show you where to get it)"
+echo "  • An API key from Anthropic (Claude) or OpenAI"
+echo "  • ~600 MB of disk space"
+echo ""
+echo -e "${BOLD}What we'll do:${RESET}"
+echo "  • Check and install Docker if needed"
+echo "  • Set up configuration files"
+echo "  • Start the AI agent"
+echo "  • Verify everything is working"
+echo ""
+
+read -rp "Ready to continue? (press Enter)"
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 2: Detect OS and install Docker ──────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Checking Docker Installation"
+
+DISTRO=$(detect_distro)
+
+if command -v docker &>/dev/null && docker compose version &>/dev/null; then
+    DOCKER_VERSION=$(docker --version | awk '{print $3}' | tr -d ',')
+    log_ok "Docker is already installed (version $DOCKER_VERSION)"
+elif sudo docker --version &>/dev/null && sudo docker compose version &>/dev/null; then
+    DOCKER_VERSION=$(sudo docker --version | awk '{print $3}' | tr -d ',')
+    log_ok "Docker is installed (version $DOCKER_VERSION, requires sudo)"
+else
+    log_warn "Docker not found. Installing now..."
+
+    case "$DISTRO" in
+        ubuntu|debian)
+            log_section "Updating package manager"
+            sudo apt-get update -qq > /dev/null
+
+            log_section "Installing Docker dependencies"
+            sudo apt-get install -y -qq ca-certificates curl gnupg > /dev/null
+
+            log_section "Adding Docker to your system"
+            sudo install -m 0755 -d /etc/apt/keyrings > /dev/null
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg 2>/dev/null \
+                | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null
+            sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+            CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-$(lsb_release -cs)}}")
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
+                | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            log_section "Installing Docker packages"
+            sudo apt-get update -qq > /dev/null
+            sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
+            ;;
+        fedora)
+            log_section "Installing Docker dependencies"
+            sudo dnf install -y -q dnf-plugins-core > /dev/null
+
+            log_section "Adding Docker repository"
+            sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo > /dev/null
+
+            log_section "Installing Docker packages"
+            sudo dnf install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
+            ;;
+        *)
+            exit_error "Unsupported Linux distribution: $DISTRO. Please install Docker manually from https://docs.docker.com/install/"
+            ;;
+    esac
+
+    log_section "Starting Docker service"
+    sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+    sudo systemctl enable docker 2>/dev/null || sudo chkconfig docker on 2>/dev/null || true
+
+    log_section "Adding your user to docker group"
+    sudo usermod -aG docker "$USER" 2>/dev/null || true
+
+    log_ok "Docker installed successfully"
+    log_warn "Note: You may need to log out and back in for group changes to take effect."
+    log_info "For now, docker commands will use sudo."
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 3: Gather credentials ────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Discord & API Configuration"
+
+log_info "You'll need 2 Discord bot tokens and 1 LLM API key."
+echo ""
+echo -e "${BOLD}Where to get Discord tokens:${RESET}"
+echo "  1. Go to: https://discord.com/developers/applications"
+echo "  2. Click 'New Application' (or use existing)"
+echo "  3. Go to 'Bot' tab and click 'Add Bot'"
+echo "  4. Under 'TOKEN', click 'Copy'"
+echo "  5. Can use same token for both bots"
+echo ""
+echo -e "${BOLD}Where to get LLM API key:${RESET}"
+echo "  • Anthropic (Claude): https://console.anthropic.com/account/keys"
+echo "  • OpenAI: https://platform.openai.com/account/api-keys"
+echo ""
+
+read -rp "Nanobot Discord token: " DISCORD_BOT_TOKEN
+[[ -z "$DISCORD_BOT_TOKEN" ]] && exit_error "Discord token is required"
+
+read -rp "Dashboard Bot token (press Enter to use same as Nanobot): " DASHBOT_TOKEN
+[[ -z "$DASHBOT_TOKEN" ]] && DASHBOT_TOKEN="$DISCORD_BOT_TOKEN"
+
+echo ""
+echo "Which LLM would you like to use?"
+echo "  1) Anthropic (Claude) — recommended"
+echo "  2) OpenAI (GPT-4)"
+echo ""
+read -rp "Enter your choice (1 or 2): " LLM_CHOICE
+
+case "$LLM_CHOICE" in
+    1)
+        read -rsp "Anthropic API key (paste and press Enter): " ANTHROPIC_API_KEY
+        OPENAI_API_KEY=""
+        echo ""
+        ;;
+    2)
+        read -rsp "OpenAI API key (paste and press Enter): " OPENAI_API_KEY
+        ANTHROPIC_API_KEY=""
+        echo ""
+        ;;
+    *)
+        exit_error "Invalid choice. Please run the installer again and select 1 or 2."
+        ;;
+esac
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 4: Installation location (optional) ──────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Installation Location"
+
+log_info "Where would you like to store your workspace?"
+echo "  (Press Enter to use current directory)"
+echo ""
+
+read -rp "Installation path (or press Enter): " INSTALL_PATH
+[[ -z "$INSTALL_PATH" ]] && INSTALL_PATH="$(pwd)"
+
+if [[ ! -d "$INSTALL_PATH" ]]; then
+    log_warn "Path does not exist. Creating: $INSTALL_PATH"
+    mkdir -p "$INSTALL_PATH" || exit_error "Failed to create directory: $INSTALL_PATH"
+fi
+
+log_ok "Using: $INSTALL_PATH"
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 5: Review before installation ────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Configuration Summary"
+
+echo -e "${BOLD}Before we start:${RESET}"
+echo ""
+echo "  Installation path:     $INSTALL_PATH"
+echo "  Nanobot Discord:       ${DISCORD_BOT_TOKEN:0:10}...****"
+echo "  Dashboard token:       ${DASHBOT_TOKEN:0:10}...****"
+if [[ -n "$ANTHROPIC_API_KEY" ]]; then
+    echo "  LLM:                   Anthropic (Claude)"
+    echo "  Anthropic key:         ${ANTHROPIC_API_KEY:0:10}...****"
+else
+    echo "  LLM:                   OpenAI (GPT-4)"
+    echo "  OpenAI key:            ${OPENAI_API_KEY:0:10}...****"
+fi
+echo ""
+
+read -rp "Does this look correct? (yes/no): " CONFIRM
+if [[ "$CONFIRM" != "yes" ]]; then
+    log_warn "Setup cancelled. You can run './install' again anytime."
+    exit 0
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 6: Create .env file ──────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Setting Up Configuration Files"
+
+ENV_FILE="$INSTALL_PATH/.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+    log_warn ".env already exists. Backing up to .env.bak"
+    cp "$ENV_FILE" "$ENV_FILE.bak"
+fi
+
+log_section "Creating .env"
+
+cat > "$ENV_FILE" << EOF
+# Discord Bot Tokens
+DISCORD_BOT_TOKEN=$DISCORD_BOT_TOKEN
+DASHBOT_TOKEN=$DASHBOT_TOKEN
+
+# LLM API Keys
+ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+OPENAI_API_KEY=$OPENAI_API_KEY
+EOF
+
+log_ok ".env file created"
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 7: Build and start containers ────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Building and Starting Services"
+
+cd "$INSTALL_PATH"
+
+log_section "Building Docker images (this takes 1-2 minutes on first run)..."
+docker compose up -d --build 2>&1 | grep -E "^(Building|Created|Starting|Pulling)" || true
+
+log_ok "Services started"
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 8: Verify installation ───────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Verifying Installation"
+
+sleep 2
+
+echo ""
+docker compose ps
+echo ""
+
+# Check Nanobot
+NANOBOT_STATE=$(docker compose ps nanobot --format '{{.State}}' 2>/dev/null || echo "unknown")
+if [[ "$NANOBOT_STATE" == "running" ]]; then
+    log_ok "Nanobot is running"
+else
+    log_warn "Nanobot: $NANOBOT_STATE"
+fi
+
+# Check Dashboard Bot
+DASHBOT_STATE=$(docker compose ps dashbot --format '{{.State}}' 2>/dev/null || echo "unknown")
+if [[ "$DASHBOT_STATE" == "running" ]]; then
+    log_ok "Dashboard Bot is running"
+else
+    log_warn "Dashboard Bot: $DASHBOT_STATE"
+fi
+
+# ══════════════════════════════════════════════════════════════════════════
+# ── STEP 9: Success and next steps ────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════
+
+log_header "Installation Complete!"
+
+echo -e "${BOLD}🎉 Your AI agent is ready!${RESET}"
+echo ""
+echo -e "${BOLD}Next steps:${RESET}"
+echo ""
+echo "  1. Add your bot to Discord"
+echo "     • Go to: https://discord.com/developers/applications"
+echo "     • Select your app → 'OAuth2' → 'URL Generator'"
+echo "     • Scopes: 'bot', Permissions: 'Send Messages', 'Use Slash Commands'"
+echo "     • Copy generated URL and open in browser"
+echo ""
+echo "  2. Test in Discord"
+echo "     • Send a message to your Nanobot — it should respond"
+echo "     • Type '/status' — Dashboard Bot shows system info"
+echo "     • Type '/tasks' — View and manage tasks"
+echo ""
+echo -e "${BOLD}Useful commands:${RESET}"
+echo "     docker compose logs -f nanobot    # See Nanobot activity"
+echo "     docker compose logs -f dashbot    # See Dashboard activity"
+echo "     docker compose restart nanobot    # Restart Nanobot if needed"
+echo ""
+echo -e "${BOLD}Location:${RESET}  $INSTALL_PATH"
+echo ""

@@ -34,6 +34,7 @@ A lightweight 2-container AI agent stack: **Nanobot** (Python AI agent) + **Dash
 - **Docker** with Compose plugin installed
 - A **Discord bot token** (see [Discord Developer Portal](https://discord.com/developers/applications) — create an app, enable Message Content Intent, invite to your server with `Send Messages`, `Use Slash Commands`, `Read Message History`, `Embed Links`)
 - At least one **LLM API key** (Anthropic or OpenAI)
+- **Disk space**: ~800 MB for both Docker images (build), ~50 MB for persistent data (sqlite databases, workspace)
 
 ## Project structure
 
@@ -45,7 +46,7 @@ container-automata/
 ├── .env.example                # Template for .env
 ├── setup.sh                    # Automated installer
 ├── nanobot/
-│   ├── Dockerfile              # Python 3.11 slim base, installs nanobot via pip
+│   ├── Dockerfile              # Python 3.12 slim base, installs nanobot via pip
 │   ├── config.yaml             # LLM provider config + Discord settings
 │   └── workspace/              # Persistent workspace for agent projects
 └── dashbot/
@@ -59,7 +60,7 @@ container-automata/
 
 | Service | Language | Purpose | Config |
 |---------|----------|---------|--------|
-| **nanobot** | Python 3.11 | AI agent connected to Discord, calls cloud LLMs | `nanobot/config.yaml` |
+| **nanobot** | Python 3.12 | AI agent connected to Discord, calls cloud LLMs | `nanobot/config.yaml` |
 | **dashbot** | Python 3.12 | Status monitoring and task management | `.env` |
 
 **Details:**
@@ -67,6 +68,23 @@ container-automata/
 - Nanobot mounts `config.yaml` (read-only) + `workspace/` (persistent)
 - Dashboard bot mounts `data/` for persistent SQLite database
 - Both connected to shared Docker network (`automata-network`)
+
+## Disk space breakdown
+
+| Component | Size | Purpose |
+|-----------|------|---------|
+| python:3.12-slim base | ~130 MB | Base OS + Python runtime (shared across both) |
+| Nanobot image + deps | ~300 MB | Git, curl, nanobot framework, dependencies |
+| DashBot image + deps | ~80 MB | Discord.py, aiosqlite dependencies |
+| **Total images** | **~510 MB** | After de-duplication (shared base) |
+| Persistent data | ~50 MB | SQLite databases, workspace files (on first run) |
+| **Total on disk** | **~560 MB** | Typical usage after setup |
+
+**Notes:**
+- Sizes are approximate and vary based on Python version and installed dependencies
+- Shared base image (python:3.12-slim) reduces total footprint
+- Persistent data is minimal unless storing large task history or workspace artifacts
+- First build downloads dependencies from PyPI (~200 MB download, cached locally)
 
 ## Quick install (automated)
 
