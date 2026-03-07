@@ -29,28 +29,41 @@ DISTRO=$(detect_distro)
 # ── Step 1: Docker check / install ───────────────────────────────────────────
 section "Step 1 — Docker"
 
-if docker --version &>/dev/null && docker compose version &>/dev/null; then
+DOCKER_INSTALLED=false
+if command -v docker &>/dev/null && command -v docker-compose &>/dev/null; then
     ok "Docker $(docker --version | awk '{print $3}' | tr -d ',') already installed"
-else
-    warn "Docker not found. Installing now..."
+    DOCKER_INSTALLED=true
+elif sudo docker --version &>/dev/null && sudo docker compose version &>/dev/null; then
+    ok "Docker $(sudo docker --version | awk '{print $3}' | tr -d ',') already installed (sudo required)"
+    DOCKER_INSTALLED=true
+fi
+
+if [ "$DOCKER_INSTALLED" = false ]; then
+    warn "Docker not found. Installing now for $DISTRO..."
 
     case "$DISTRO" in
         ubuntu|debian)
             # Ubuntu/Debian
+            info "Removing old Docker packages..."
             sudo apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+
+            info "Installing Docker dependencies..."
             sudo apt-get update -qq
             sudo apt-get install -y -qq ca-certificates curl gnupg
 
+            info "Adding Docker GPG key..."
             sudo install -m 0755 -d /etc/apt/keyrings
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
                 | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
             sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
+            info "Adding Docker repository..."
             CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-$(lsb_release -cs)}}")
             echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
 https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
                 | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
+            info "Installing Docker packages..."
             sudo apt-get update -qq
             sudo apt-get install -y -qq \
                 docker-ce docker-ce-cli containerd.io \
@@ -58,9 +71,16 @@ https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
             ;;
         fedora)
             # Fedora/RHEL/CentOS
+            info "Removing old Docker packages..."
             sudo dnf remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+
+            info "Installing Docker dependencies..."
             sudo dnf install -y -q dnf-plugins-core
+
+            info "Adding Docker repository..."
             sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+
+            info "Installing Docker packages..."
             sudo dnf install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin
             ;;
         *)
@@ -69,11 +89,17 @@ https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
     esac
 
     # Add current user to docker group
+    info "Adding current user to docker group..."
     sudo usermod -aG docker "$USER" 2>/dev/null || true
 
+    # Start Docker daemon
+    info "Starting Docker daemon..."
+    sudo systemctl start docker 2>/dev/null || sudo service docker start 2>/dev/null || true
+    sudo systemctl enable docker 2>/dev/null || sudo chkconfig docker on 2>/dev/null || true
+
     ok "Docker installed."
-    warn "You may need to log out and back in (or run 'newgrp docker') for"
-    warn "group changes to take effect. For this session, commands will use sudo."
+    warn "⚠️  You may need to log out and back in (or run 'newgrp docker') for"
+    warn "   group changes to take effect. For this session, commands may use sudo."
 fi
 
 # ── Step 1.5: Python check (optional, for local scripts) ────────────────────
