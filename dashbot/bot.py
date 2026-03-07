@@ -4,7 +4,7 @@ ZeroClaw Dashboard Bot
 A Discord bot for status monitoring and task management.
 
 Commands:
-  /status  - Show Ollama health, ZeroClaw config, system info
+  /status  - Show ZeroClaw config and system info
   /tasks   - List all tasks
   /add     - Add a new task
   /done    - Mark a task as completed
@@ -22,7 +22,6 @@ import httpx
 
 # Configuration from environment
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 ZEROCLAW_URL = os.getenv("ZEROCLAW_URL", "http://zeroclaw:8080")
 DATABASE_PATH = "/app/data/tasks.db"
 ZEROCLAW_CONFIG_PATH = "/app/zeroclaw-config.toml"
@@ -97,18 +96,16 @@ async def delete_task(task_id: int):
 # Health Check Functions
 # ============================================================
 
-async def check_ollama_health():
-    """Check Ollama API health and get loaded models."""
+async def check_zeroclaw_health():
+    """Check ZeroClaw API health."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{OLLAMA_URL}/api/tags")
+        async with httpx.AsyncClient(timeout=5.0) as http:
+            response = await http.get(f"{ZEROCLAW_URL}/health")
             if response.status_code == 200:
-                data = response.json()
-                models = [m["name"] for m in data.get("models", [])]
-                return {"status": "online", "models": models}
-            return {"status": "error", "models": []}
+                return {"status": "online"}
+            return {"status": "error", "code": response.status_code}
     except Exception as e:
-        return {"status": "offline", "error": str(e), "models": []}
+        return {"status": "offline", "error": str(e)}
 
 
 def read_zeroclaw_config():
@@ -119,7 +116,7 @@ def read_zeroclaw_config():
         # Simple parsing for display
         config = {}
         for line in content.split("\n"):
-            if "=" in line and not line.strip().startswith("#"):
+            if "=" in line and not line.strip().startswith("#") and not line.strip().startswith("["):
                 key, value = line.split("=", 1)
                 config[key.strip()] = value.strip().strip('"')
         return config
@@ -133,44 +130,37 @@ def read_zeroclaw_config():
 
 @tree.command(name="status", description="Show system status and health")
 async def status_command(interaction: discord.Interaction):
-    """Display system status including Ollama and ZeroClaw info."""
+    """Display system status including ZeroClaw info."""
     await interaction.response.defer()
 
-    # Check Ollama
-    ollama = await check_ollama_health()
-    
+    # Check ZeroClaw
+    zc_health = await check_zeroclaw_health()
+
     # Read ZeroClaw config
     zc_config = read_zeroclaw_config()
 
     # Build embed
+    is_healthy = zc_health["status"] == "online"
     embed = discord.Embed(
-        title="📊 ZeroClaw Stack Status",
-        color=discord.Color.green() if ollama["status"] == "online" else discord.Color.red(),
+        title="System Status",
+        color=discord.Color.green() if is_healthy else discord.Color.red(),
         timestamp=datetime.now()
     )
 
-    # Ollama status
-    ollama_status = "🟢 Online" if ollama["status"] == "online" else "🔴 Offline"
-    models_list = ", ".join(ollama["models"]) if ollama["models"] else "None loaded"
-    embed.add_field(
-        name="🦙 Ollama",
-        value=f"Status: {ollama_status}\nModels: {models_list}",
-        inline=False
-    )
-
-    # ZeroClaw config
+    # ZeroClaw status
+    zc_status = "Online" if is_healthy else "Offline"
     if "error" not in zc_config:
         provider = zc_config.get("default_provider", "unknown")
         model = zc_config.get("default_model", "unknown")
         embed.add_field(
-            name="🦀 ZeroClaw",
-            value=f"Provider: `{provider}`\nModel: `{model}`",
+            name="ZeroClaw",
+            value=f"Status: {zc_status}\nProvider: `{provider}`\nModel: `{model}`",
             inline=False
         )
     else:
         embed.add_field(
-            name="🦀 ZeroClaw",
-            value=f"Config error: {zc_config['error']}",
+            name="ZeroClaw",
+            value=f"Status: {zc_status}\nConfig error: {zc_config['error']}",
             inline=False
         )
 
@@ -179,7 +169,7 @@ async def status_command(interaction: discord.Interaction):
     pending = len([t for t in tasks if t["status"] == "pending"])
     done = len([t for t in tasks if t["status"] == "done"])
     embed.add_field(
-        name="📋 Tasks",
+        name="Tasks",
         value=f"Pending: {pending} | Completed: {done}",
         inline=False
     )
@@ -193,11 +183,11 @@ async def tasks_command(interaction: discord.Interaction):
     tasks = await get_all_tasks()
 
     if not tasks:
-        await interaction.response.send_message("📋 No tasks yet. Use `/add` to create one.")
+        await interaction.response.send_message("No tasks yet. Use `/add` to create one.")
         return
 
     embed = discord.Embed(
-        title="📋 Task List",
+        title="Task List",
         color=discord.Color.blue(),
         timestamp=datetime.now()
     )
@@ -214,14 +204,14 @@ async def tasks_command(interaction: discord.Interaction):
 
     if pending_tasks:
         embed.add_field(
-            name="⏳ Pending",
+            name="Pending",
             value="\n".join(pending_tasks[:10]) or "None",
             inline=False
         )
 
     if done_tasks:
         embed.add_field(
-            name="✅ Completed",
+            name="Completed",
             value="\n".join(done_tasks[:10]) or "None",
             inline=False
         )
@@ -235,7 +225,7 @@ async def add_command(interaction: discord.Interaction, task: str):
     """Add a new task."""
     task_id = await add_task(task)
     await interaction.response.send_message(
-        f"✅ Task added with ID `{task_id}`: {task}"
+        f"Task added with ID `{task_id}`: {task}"
     )
 
 
@@ -245,7 +235,7 @@ async def done_command(interaction: discord.Interaction, task_id: int):
     """Mark a task as done."""
     await complete_task(task_id)
     await interaction.response.send_message(
-        f"✅ Task `{task_id}` marked as completed!"
+        f"Task `{task_id}` marked as completed!"
     )
 
 
@@ -255,7 +245,7 @@ async def delete_command(interaction: discord.Interaction, task_id: int):
     """Delete a task."""
     await delete_task(task_id)
     await interaction.response.send_message(
-        f"🗑️ Task `{task_id}` deleted."
+        f"Task `{task_id}` deleted."
     )
 
 
@@ -280,5 +270,5 @@ if __name__ == "__main__":
     if not DISCORD_TOKEN:
         print("ERROR: DISCORD_BOT_TOKEN environment variable not set")
         exit(1)
-    
+
     client.run(DISCORD_TOKEN)

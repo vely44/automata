@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup.sh — ZeroClaw Stack installer
+# setup.sh — ZeroClaw Stack installer (API mode)
 # Run this once on a fresh Linux server or local machine.
 # Usage: bash setup.sh
 set -euo pipefail
@@ -62,18 +62,22 @@ else
     cp .env.example .env
 
     echo ""
-    echo "  You need Discord bot token(s) to continue."
-    echo "  See README.md Step 3 for how to create a bot."
+    echo "  You need Discord bot token(s) and at least one LLM API key."
+    echo "  See README.md for details."
     echo ""
 
     read -rp "  ZeroClaw bot token (DISCORD_BOT_TOKEN): " TOKEN_ZC
     read -rp "  Dashboard Bot token (DASHBOT_TOKEN) [press Enter to reuse ZeroClaw token]: " TOKEN_DASH
-
     [[ -z "$TOKEN_DASH" ]] && TOKEN_DASH="$TOKEN_ZC"
 
-    # Write tokens into .env using sed (no external deps)
+    read -rp "  Anthropic API key (ANTHROPIC_API_KEY) [press Enter to skip]: " API_ANTHROPIC
+    read -rp "  OpenAI API key (OPENAI_API_KEY) [press Enter to skip]: " API_OPENAI
+
+    # Write values into .env
     sed -i "s|your_discord_bot_token_here|${TOKEN_ZC}|" .env
     sed -i "s|your_dashbot_token_here|${TOKEN_DASH}|" .env
+    [[ -n "$API_ANTHROPIC" ]] && sed -i "s|your_anthropic_api_key_here|${API_ANTHROPIC}|" .env
+    [[ -n "$API_OPENAI" ]] && sed -i "s|your_openai_api_key_here|${API_OPENAI}|" .env
 
     ok ".env configured."
 fi
@@ -82,10 +86,18 @@ fi
 section "Step 3 — Token check"
 
 if grep -qE "your_(discord_bot|dashbot)_token_here" .env; then
-    warn ".env still contains placeholder tokens."
+    warn ".env still contains placeholder Discord tokens."
     warn "Edit .env and replace the placeholder values, then re-run this script."
     exit 1
 fi
+
+if grep -qE "your_(anthropic|openai)_api_key_here" .env && \
+   ! grep -qvE "your_(anthropic|openai)_api_key_here|^#" .env | grep -q "API_KEY"; then
+    warn "No LLM API key set. ZeroClaw needs at least one (Anthropic or OpenAI)."
+    warn "Edit .env and add your API key, then re-run this script."
+    exit 1
+fi
+
 ok "Tokens look set."
 
 # ── Step 4: Build containers ─────────────────────────────────────────────────
@@ -96,26 +108,14 @@ docker compose up -d --build
 
 ok "Containers started."
 
-# ── Step 5: Pull default model ───────────────────────────────────────────────
-section "Step 5 — Pull LLM model"
-
-DEFAULT_MODEL="mistral:7b"
-info "Pulling ${DEFAULT_MODEL} into Ollama (this downloads ~4 GB — first time only)..."
-docker compose exec ollama ollama pull "${DEFAULT_MODEL}"
-ok "${DEFAULT_MODEL} ready."
-
-# ── Step 6: Verify ───────────────────────────────────────────────────────────
-section "Step 6 — Verify"
+# ── Step 5: Verify ───────────────────────────────────────────────────────────
+section "Step 5 — Verify"
 
 echo ""
 docker compose ps
 echo ""
 
-ZEROCLAW_STATUS=$(docker compose ps zeroclaw --format '{{.State}}' 2>/dev/null || echo "unknown")
-DASHBOT_STATUS=$(docker compose ps dashbot --format '{{.State}}' 2>/dev/null || echo "unknown")
-OLLAMA_STATUS=$(docker compose ps ollama --format '{{.State}}' 2>/dev/null || echo "unknown")
-
-for svc in zeroclaw dashbot ollama; do
+for svc in zeroclaw dashbot; do
     STATE=$(docker compose ps "$svc" --format '{{.State}}' 2>/dev/null || echo "unknown")
     if [[ "$STATE" == "running" ]]; then
         ok "${svc}: running"
@@ -133,7 +133,6 @@ echo "  Useful commands:"
 echo "    docker compose ps                         # container status"
 echo "    docker compose logs -f zeroclaw           # ZeroClaw logs"
 echo "    docker compose logs -f dashbot            # Dashboard logs"
-echo "    docker compose exec ollama ollama list    # installed models"
 echo ""
 echo "  Test in Discord:"
 echo "    - Send a message to your ZeroClaw bot — it should respond via the LLM"

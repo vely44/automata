@@ -1,12 +1,11 @@
-# Plan: Docker + ZeroClaw + Ollama + Dashboard Bot (v3)
+# Plan: Docker + ZeroClaw + Cloud API + Dashboard Bot (v4)
 
 ## Context
-Build a portable 3-container stack:
-- **Ollama** — Local LLM inference
-- **ZeroClaw** — Rust AI agent connected to Discord
+Build a portable 2-container stack:
+- **ZeroClaw** — Rust AI agent connected to Discord, calling cloud LLM APIs
 - **Dashboard Bot** — Python bot for status monitoring and task management
 
-Ollama is internal-only (used by ZeroClaw, not exposed separately). Models are swappable without rebuilding.
+No local LLM — ZeroClaw calls Anthropic, OpenAI, or other cloud APIs directly.
 
 ## Architecture
 
@@ -14,14 +13,12 @@ Ollama is internal-only (used by ZeroClaw, not exposed separately). Models are s
 ┌──────────────────────────────────────────────────┐
 │  Docker Compose Stack                            │
 │                                                  │
-│  ┌───────────┐       ┌───────────┐              │
-│  │  Ollama   │◄──────│ ZeroClaw  │              │
-│  │  :11434   │       │  :8080    │              │
-│  └───────────┘       └───────────┘              │
-│        │                   │                     │
-│        │   ┌───────────────┘                     │
-│        │   │                                     │
-│        ▼   ▼                                     │
+│  ┌───────────┐       ┌─────────────────┐        │
+│  │ ZeroClaw  │──────►│ Cloud LLM API   │        │
+│  │  :8080    │       │ (Anthropic/OAI) │        │
+│  └───────────┘       └─────────────────┘        │
+│        │                                         │
+│        │                                         │
 │  ┌─────────────────────────────┐                │
 │  │  Dashboard Bot (Python)     │                │
 │  │  - /status, /tasks, /add    │                │
@@ -38,31 +35,28 @@ Ollama is internal-only (used by ZeroClaw, not exposed separately). Models are s
 ```
 ├── PLAN.md
 ├── README.md
-├── docker-compose.yml          # 3 services: ollama + zeroclaw + dashbot
-├── .env                        # Discord token, model name, ports
+├── docker-compose.yml          # 2 services: zeroclaw + dashbot
+├── .env                        # Discord tokens, API keys, ports
 ├── setup.sh                    # automated installer
 ├── zeroclaw/
 │   ├── Dockerfile              # prebuilt binary from GitHub releases
-│   ├── config.toml             # Ollama provider + Discord
+│   ├── config.toml             # API provider config + Discord
 │   └── workspace/              # persistent workspace for agent projects
-├── dashbot/
-│   ├── Dockerfile              # Python slim image
-│   ├── bot.py                  # Discord bot with slash commands
-│   ├── requirements.txt        # discord.py, aiosqlite, httpx
-│   └── data/                   # persistent storage (tasks.db created here)
-└── ollama/
-    └── models/                 # persistent model storage (bind mount)
+└── dashbot/
+    ├── Dockerfile              # Python slim image
+    ├── bot.py                  # Discord bot with slash commands
+    ├── requirements.txt        # discord.py, aiosqlite, httpx
+    └── data/                   # persistent storage (tasks.db created here)
 ```
 
 ## Services
 
 | Service | Image | Ports | Purpose |
 |---------|-------|-------|---------|
-| ollama | `ollama/ollama:latest` | none exposed | Internal LLM engine |
 | zeroclaw | Custom Dockerfile | 8080 (webhook) | AI agent, Discord channel |
 | dashbot | Custom Dockerfile | none | Status & task management bot |
 
-- Ollama internal only (`http://ollama:11434` within Docker network)
+- ZeroClaw calls cloud APIs (Anthropic/OpenAI) — API keys passed via env vars
 - ZeroClaw mounts config.toml (read-only) + workspace/ (read-write)
 - Dashboard bot mounts data/ for persistent SQLite
 

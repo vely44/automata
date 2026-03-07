@@ -1,5 +1,4 @@
 .env
-ollama/models/
 *.log
 tests.txt
 *.db

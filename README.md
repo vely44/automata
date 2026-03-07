@@ -1,18 +1,20 @@
-# container-automata (old name — ZeroClaw Stack) v3
+# container-automata v4
 
-A portable 3-container AI agent stack: **Ollama** (local LLM inference) + **ZeroClaw** (Rust AI agent) + **Dashboard Bot** (Python status/task manager). All connected through Discord.
+A portable 2-container AI agent stack: **ZeroClaw** (Rust AI agent) + **Dashboard Bot** (Python status/task manager). ZeroClaw calls cloud LLM APIs (Anthropic, OpenAI, etc.) instead of running models locally. All connected through Discord.
 
 ```
 ┌─────────────────────────────────────────┐
 │  Docker Network                         │
 │                                         │
-│  Ollama ◄─── ZeroClaw ───► Discord     │
-│    ▲              │                     │
-│    │              │                     │
-│    └──── Dashboard Bot ──► Discord     │
-│              │                          │
-│              ▼                          │
-│          tasks.db                       │
+│  ZeroClaw ───► Cloud LLM API           │
+│      │         (Anthropic / OpenAI)     │
+│      │                                  │
+│      ├──────► Discord                   │
+│      │                                  │
+│  Dashboard Bot ──► Discord             │
+│      │                                  │
+│      ▼                                  │
+│  tasks.db                               │
 └─────────────────────────────────────────┘
 ```
 
@@ -22,6 +24,7 @@ A portable 3-container AI agent stack: **Ollama** (local LLM inference) + **Zero
 
 - **Docker** with Compose plugin installed
 - A **Discord bot token** (see [Discord Developer Portal](https://discord.com/developers/applications) — create an app, enable Message Content Intent, invite to your server with `Send Messages`, `Use Slash Commands`, `Read Message History`, `Embed Links`)
+- At least one **LLM API key** (Anthropic or OpenAI)
 
 ## Quick install (automated)
 
@@ -31,7 +34,7 @@ cd container-automata
 bash setup.sh
 ```
 
-Handles Docker install (Ubuntu/Debian), `.env` setup, build, model pull, and verification in one shot.
+Handles Docker install (Ubuntu/Debian), `.env` setup, build, and verification in one shot.
 
 ## Manual install
 
@@ -43,46 +46,42 @@ cd container-automata
 cp .env.example .env
 ```
 
-Edit `.env` with your token(s):
+Edit `.env` with your tokens and API keys:
 ```
 DISCORD_BOT_TOKEN=your_zeroclaw_token_here
 DASHBOT_TOKEN=your_dashbot_token_here
 ZEROCLAW_PORT=8080
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
 ```
 
 ### 2. Build and launch
 
 ```bash
 docker compose up -d --build
-docker compose exec ollama ollama pull mistral:7b
 ```
 
 ### 3. Verify
 
 Test in Discord:
-- Message ZeroClaw — it should respond via the LLM
+- Message ZeroClaw — it should respond via the cloud LLM
 - `/status` — Dashboard Bot shows system health
 - `/tasks`, `/add`, `/done`, `/delete` — task management
 
-## Swapping models
+## Switching providers / models
 
-No rebuild needed — just pull and point:
+Edit `zeroclaw/config.toml`:
+- Change `default_provider` to `"anthropic"` or `"openai"`
+- Change `default_model` to the model you want (e.g. `claude-sonnet-4-6`, `gpt-4o`)
+- Make sure the matching API key is set in `.env`
 
-```bash
-docker compose exec ollama ollama pull <model-name>
-```
-
-Edit `zeroclaw/config.toml` → change `default_model` → `docker compose restart zeroclaw`.
-
-## GPU support
-
-If you have an NVIDIA GPU, uncomment the GPU block in `docker-compose.yml` under the `ollama` service and install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html). Ollama will use the GPU automatically.
+Then restart: `docker compose restart zeroclaw`
 
 ## Dashboard Bot commands
 
 | Command | Description |
 |---------|-------------|
-| `/status` | Show Ollama health, ZeroClaw config, system info |
+| `/status` | Show ZeroClaw config, provider, system info |
 | `/tasks` | List all tasks (pending and completed) |
 | `/add <task>` | Add a new task |
 | `/done <id>` | Mark a task as completed |
