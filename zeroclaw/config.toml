@@ -1,11 +1,13 @@
-# ZeroClaw Configuration (v3)
-# ============================
+# ZeroClaw Configuration (v4 — API mode)
+# ========================================
+# Local LLM removed. ZeroClaw now calls cloud APIs directly.
 
-# Provider: Ollama (running in sibling container)
-# Note: For custom Ollama URL, use the custom: prefix
-default_provider = "ollama"
-api_url = "http://ollama:11434"
-default_model = "mistral:7b"
+# Provider: "anthropic", "openai", or any OpenAI-compatible endpoint
+# API keys are passed via environment variables:
+#   ANTHROPIC_API_KEY  (for provider = "anthropic")
+#   OPENAI_API_KEY     (for provider = "openai")
+default_provider = "anthropic"
+default_model = "claude-sonnet-4-6"
 default_temperature = 0.7
 
 # Gateway
