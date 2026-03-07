@@ -60,13 +60,21 @@ container-automata/
 
 | Service | Language | Purpose | Config |
 |---------|----------|---------|--------|
-| **nanobot** | Python 3.12 | AI agent connected to Discord, calls cloud LLMs | `nanobot/config.yaml` |
-| **dashbot** | Python 3.12 | Status monitoring and task management | `.env` |
+| **nanobot** | Python 3.12 | AI agent that calls cloud LLMs, executes tools (bash, git, file ops) in sandbox | `nanobot/config.yaml` |
+| **dashbot** | Python 3.12 | Discord status monitoring and task management | `.env` + `dashbot/data/` |
 
-**Details:**
-- Nanobot calls cloud APIs (Anthropic/OpenAI) — API keys via `DISCORD_BOT_TOKEN`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` env vars
-- Nanobot mounts `config.yaml` (read-only) + `workspace/` (persistent)
-- Dashboard bot mounts `data/` for persistent SQLite database
+**Nanobot Details:**
+- Calls cloud LLM APIs (Anthropic/OpenAI) — API keys via env vars
+- Runs tools in **sandboxed mode**: bash, git, file operations (with allowed-list + forbidden paths)
+- Memory backend: SQLite (stores up to 100 recent interactions)
+- Autonomy: Can run in `supervised` (default) or `autonomous` mode with cost/action limits
+- Mounts `config.yaml` (read-only) + `workspace/` (persistent)
+- Config controls: LLM model, temperature, max_tokens, tools, sandbox, memory, autonomy level
+
+**Dashboard Bot Details:**
+- Slash commands for system status and task management
+- Persistent SQLite database for tasks
+- Mounts `data/` directory
 - Both connected to shared Docker network (`automata-network`)
 
 ## Disk space breakdown
@@ -91,7 +99,7 @@ container-automata/
 ```bash
 git clone https://github.com/vely44/container-automata.git
 cd container-automata
-bash setup.sh
+./install
 ```
 
 Handles Docker install (Ubuntu/Debian), `.env` setup, build, and verification in one shot.
