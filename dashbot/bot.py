@@ -1,10 +1,10 @@
 """
-ZeroClaw Dashboard Bot
-======================
+Nanobot Dashboard Bot
+=====================
 A Discord bot for status monitoring and task management.
 
 Commands:
-  /status  - Show ZeroClaw config and system info
+  /status  - Show Nanobot config and system info
   /tasks   - List all tasks
   /add     - Add a new task
   /done    - Mark a task as completed
@@ -22,9 +22,9 @@ import httpx
 
 # Configuration from environment
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-ZEROCLAW_URL = os.getenv("ZEROCLAW_URL", "http://zeroclaw:8080")
+NANOBOT_URL = os.getenv("NANOBOT_URL", "http://nanobot:8080")
 DATABASE_PATH = "/app/data/tasks.db"
-ZEROCLAW_CONFIG_PATH = "/app/zeroclaw-config.toml"
+NANOBOT_CONFIG_PATH = "/app/nanobot-config.yaml"
 
 
 # Discord bot setup
@@ -96,11 +96,11 @@ async def delete_task(task_id: int):
 # Health Check Functions
 # ============================================================
 
-async def check_zeroclaw_health():
-    """Check ZeroClaw API health."""
+async def check_nanobot_health():
+    """Check Nanobot API health."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as http:
-            response = await http.get(f"{ZEROCLAW_URL}/health")
+            response = await http.get(f"{NANOBOT_URL}/health")
             if response.status_code == 200:
                 return {"status": "online"}
             return {"status": "error", "code": response.status_code}
@@ -108,17 +108,21 @@ async def check_zeroclaw_health():
         return {"status": "offline", "error": str(e)}
 
 
-def read_zeroclaw_config():
-    """Read ZeroClaw config file."""
+def read_nanobot_config():
+    """Read Nanobot config file."""
     try:
-        with open(ZEROCLAW_CONFIG_PATH, "r") as f:
+        with open(NANOBOT_CONFIG_PATH, "r") as f:
             content = f.read()
-        # Simple parsing for display
+        # Simple parsing for display (YAML)
         config = {}
         for line in content.split("\n"):
-            if "=" in line and not line.strip().startswith("#") and not line.strip().startswith("["):
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip().strip('"')
+            if ":" in line and not line.strip().startswith("#"):
+                parts = line.split(":", 1)
+                if len(parts) == 2:
+                    key = parts[0].strip()
+                    value = parts[1].strip().strip('"').strip("'")
+                    if key and value:
+                        config[key] = value
         return config
     except Exception as e:
         return {"error": str(e)}
@@ -130,37 +134,37 @@ def read_zeroclaw_config():
 
 @tree.command(name="status", description="Show system status and health")
 async def status_command(interaction: discord.Interaction):
-    """Display system status including ZeroClaw info."""
+    """Display system status including Nanobot info."""
     await interaction.response.defer()
 
-    # Check ZeroClaw
-    zc_health = await check_zeroclaw_health()
+    # Check Nanobot
+    nb_health = await check_nanobot_health()
 
-    # Read ZeroClaw config
-    zc_config = read_zeroclaw_config()
+    # Read Nanobot config
+    nb_config = read_nanobot_config()
 
     # Build embed
-    is_healthy = zc_health["status"] == "online"
+    is_healthy = nb_health["status"] == "online"
     embed = discord.Embed(
         title="System Status",
         color=discord.Color.green() if is_healthy else discord.Color.red(),
         timestamp=datetime.now()
     )
 
-    # ZeroClaw status
-    zc_status = "Online" if is_healthy else "Offline"
-    if "error" not in zc_config:
-        provider = zc_config.get("default_provider", "unknown")
-        model = zc_config.get("default_model", "unknown")
+    # Nanobot status
+    nb_status = "Online" if is_healthy else "Offline"
+    if "error" not in nb_config:
+        provider = nb_config.get("provider", "unknown")
+        model = nb_config.get("model", "unknown")
         embed.add_field(
-            name="ZeroClaw",
-            value=f"Status: {zc_status}\nProvider: `{provider}`\nModel: `{model}`",
+            name="Nanobot",
+            value=f"Status: {nb_status}\nProvider: `{provider}`\nModel: `{model}`",
             inline=False
         )
     else:
         embed.add_field(
-            name="ZeroClaw",
-            value=f"Status: {zc_status}\nConfig error: {zc_config['error']}",
+            name="Nanobot",
+            value=f"Status: {nb_status}\nConfig error: {nb_config['error']}",
             inline=False
         )
 

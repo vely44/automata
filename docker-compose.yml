@@ -1,14 +1,14 @@
 services:
-  zeroclaw:
+  nanobot:
     build:
-      context: ./zeroclaw
+      context: ./nanobot
       dockerfile: Dockerfile
-    container_name: zeroclaw
+    container_name: nanobot
     ports:
-      - "${ZEROCLAW_PORT:-8080}:8080"
+      - "${NANOBOT_PORT:-8080}:8080"
     volumes:
-      - ./zeroclaw/config.toml:/root/.zeroclaw/config.toml:ro
-      - ./zeroclaw/workspace:/root/.zeroclaw/workspace
+      - ./nanobot/config.yaml:/app/config.yaml:ro
+      - ./nanobot/workspace:/app/workspace
     environment:
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -21,8 +21,8 @@ services:
     container_name: dashbot
     volumes:
       - ./dashbot/data:/app/data
-      - ./zeroclaw/config.toml:/app/zeroclaw-config.toml:ro
+      - ./nanobot/config.yaml:/app/nanobot-config.yaml:ro
     environment:
       - DISCORD_BOT_TOKEN=${DASHBOT_TOKEN}
-      - ZEROCLAW_URL=http://zeroclaw:8080
+      - NANOBOT_URL=http://nanobot:8080
     restart: unless-stopped

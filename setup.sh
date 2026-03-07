@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup.sh — ZeroClaw Stack installer (API mode)
+# setup.sh — Nanobot + Dashboard Stack installer
 # Run this once on a fresh Linux server or local machine.
 # Usage: bash setup.sh
 set -euo pipefail
@@ -66,15 +66,15 @@ else
     echo "  See README.md for details."
     echo ""
 
-    read -rp "  ZeroClaw bot token (DISCORD_BOT_TOKEN): " TOKEN_ZC
-    read -rp "  Dashboard Bot token (DASHBOT_TOKEN) [press Enter to reuse ZeroClaw token]: " TOKEN_DASH
-    [[ -z "$TOKEN_DASH" ]] && TOKEN_DASH="$TOKEN_ZC"
+    read -rp "  Nanobot Discord bot token (DISCORD_BOT_TOKEN): " TOKEN_NANOBOT
+    read -rp "  Dashboard Bot token (DASHBOT_TOKEN) [press Enter to reuse Nanobot token]: " TOKEN_DASH
+    [[ -z "$TOKEN_DASH" ]] && TOKEN_DASH="$TOKEN_NANOBOT"
 
     read -rp "  Anthropic API key (ANTHROPIC_API_KEY) [press Enter to skip]: " API_ANTHROPIC
     read -rp "  OpenAI API key (OPENAI_API_KEY) [press Enter to skip]: " API_OPENAI
 
     # Write values into .env
-    sed -i "s|your_discord_bot_token_here|${TOKEN_ZC}|" .env
+    sed -i "s|your_discord_bot_token_here|${TOKEN_NANOBOT}|" .env
     sed -i "s|your_dashbot_token_here|${TOKEN_DASH}|" .env
     [[ -n "$API_ANTHROPIC" ]] && sed -i "s|your_anthropic_api_key_here|${API_ANTHROPIC}|" .env
     [[ -n "$API_OPENAI" ]] && sed -i "s|your_openai_api_key_here|${API_OPENAI}|" .env
@@ -93,7 +93,7 @@ fi
 
 if grep -qE "your_(anthropic|openai)_api_key_here" .env && \
    ! grep -qvE "your_(anthropic|openai)_api_key_here|^#" .env | grep -q "API_KEY"; then
-    warn "No LLM API key set. ZeroClaw needs at least one (Anthropic or OpenAI)."
+    warn "No LLM API key set. Nanobot needs at least one (Anthropic or OpenAI)."
     warn "Edit .env and add your API key, then re-run this script."
     exit 1
 fi
@@ -115,7 +115,7 @@ echo ""
 docker compose ps
 echo ""
 
-for svc in zeroclaw dashbot; do
+for svc in nanobot dashbot; do
     STATE=$(docker compose ps "$svc" --format '{{.State}}' 2>/dev/null || echo "unknown")
     if [[ "$STATE" == "running" ]]; then
         ok "${svc}: running"
@@ -131,11 +131,11 @@ echo -e "${BOLD}═════════════════════�
 echo ""
 echo "  Useful commands:"
 echo "    docker compose ps                         # container status"
-echo "    docker compose logs -f zeroclaw           # ZeroClaw logs"
+echo "    docker compose logs -f nanobot            # Nanobot logs"
 echo "    docker compose logs -f dashbot            # Dashboard logs"
 echo ""
 echo "  Test in Discord:"
-echo "    - Send a message to your ZeroClaw bot — it should respond via the LLM"
+echo "    - Send a message to your Nanobot — it should respond via the LLM"
 echo "    - Type /status — Dashboard Bot shows system health"
 echo "    - Type /tasks, /add <task>, /done <id>, /delete <id>"
 echo ""

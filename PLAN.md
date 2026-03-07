@@ -1,11 +1,20 @@
-# Plan: Docker + ZeroClaw + Cloud API + Dashboard Bot (v4)
+# Plan: Docker + Nanobot + Cloud API + Dashboard Bot (v5)
 
 ## Context
 Build a portable 2-container stack:
-- **ZeroClaw** — Rust AI agent connected to Discord, calling cloud LLM APIs
+- **Nanobot** — Ultra-lightweight Python AI agent connected to Discord, calling cloud LLM APIs
 - **Dashboard Bot** — Python bot for status monitoring and task management
 
-No local LLM — ZeroClaw calls Anthropic, OpenAI, or other cloud APIs directly.
+No local LLM — Nanobot calls Anthropic, OpenAI, or other cloud APIs directly.
+
+## Why Nanobot over alternatives?
+
+- **Python-based** — ~4,000 lines of code, fully readable and auditable
+- **No compilation** — runs instantly with Python pip install
+- **Model-agnostic** — works with any LLM API
+- **Lightweight** — minimal dependencies, fast startup
+- **Discord-native** — built-in Discord integration
+- **Portable** — copy folder to any Docker machine and run
 
 ## Architecture
 
@@ -14,7 +23,7 @@ No local LLM — ZeroClaw calls Anthropic, OpenAI, or other cloud APIs directly.
 │  Docker Compose Stack                            │
 │                                                  │
 │  ┌───────────┐       ┌─────────────────┐        │
-│  │ ZeroClaw  │──────►│ Cloud LLM API   │        │
+│  │ Nanobot   │──────►│ Cloud LLM API   │        │
 │  │  :8080    │       │ (Anthropic/OAI) │        │
 │  └───────────┘       └─────────────────┘        │
 │        │                                         │
@@ -35,12 +44,12 @@ No local LLM — ZeroClaw calls Anthropic, OpenAI, or other cloud APIs directly.
 ```
 ├── PLAN.md
 ├── README.md
-├── docker-compose.yml          # 2 services: zeroclaw + dashbot
+├── docker-compose.yml          # 2 services: nanobot + dashbot
 ├── .env                        # Discord tokens, API keys, ports
 ├── setup.sh                    # automated installer
-├── zeroclaw/
-│   ├── Dockerfile              # prebuilt binary from GitHub releases
-│   ├── config.toml             # API provider config + Discord
+├── nanobot/
+│   ├── Dockerfile              # Python slim base, pip install nanobot
+│   ├── config.yaml             # API provider config + Discord
 │   └── workspace/              # persistent workspace for agent projects
 └── dashbot/
     ├── Dockerfile              # Python slim image
@@ -51,20 +60,21 @@ No local LLM — ZeroClaw calls Anthropic, OpenAI, or other cloud APIs directly.
 
 ## Services
 
-| Service | Image | Ports | Purpose |
-|---------|-------|-------|---------|
-| zeroclaw | Custom Dockerfile | 8080 (webhook) | AI agent, Discord channel |
-| dashbot | Custom Dockerfile | none | Status & task management bot |
+| Service | Language | Ports | Purpose |
+|---------|----------|-------|---------|
+| nanobot | Python | 8080 (webhook) | AI agent, Discord channel |
+| dashbot | Python | none | Status & task management bot |
 
-- ZeroClaw calls cloud APIs (Anthropic/OpenAI) — API keys passed via env vars
-- ZeroClaw mounts config.toml (read-only) + workspace/ (read-write)
+- Nanobot calls cloud APIs (Anthropic/OpenAI) — API keys passed via env vars
+- Nanobot mounts config.yaml (read-only) + workspace/ (read-write)
 - Dashboard bot mounts data/ for persistent SQLite
 
-## ZeroClaw Dockerfile
+## Nanobot Dockerfile
 
-- Base image: `ubuntu:24.04`
-- Downloads prebuilt binary from GitHub releases (v0.1.6, x86_64)
-- Installs runtime dependencies (`ca-certificates`, `libssl3`, `git`, `curl`)
+- Base image: `python:3.11-slim`
+- Clones HKUDS nanobot from GitHub and installs via pip
+- Minimal runtime dependencies (git, curl for git clone)
+- Startup time is instant (no compilation)
 
 ## Dashboard Bot
 
@@ -75,3 +85,5 @@ Uses: `discord.py`, `aiosqlite`, `httpx`.
 ## Portability
 
 Copy folder to any Docker machine → update `.env` → `docker compose up -d --build`.
+
+No Rust compilation, no prebuilt binary downloads. Just Python + pip.

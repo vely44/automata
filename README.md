@@ -1,12 +1,12 @@
-# container-automata v4
+# container-automata v5
 
-A portable 2-container AI agent stack: **ZeroClaw** (Rust AI agent) + **Dashboard Bot** (Python status/task manager). ZeroClaw calls cloud LLM APIs (Anthropic, OpenAI, etc.) instead of running models locally. All connected through Discord.
+A lightweight 2-container AI agent stack: **Nanobot** (Python AI agent) + **Dashboard Bot** (Python status/task manager). Nanobot calls cloud LLM APIs (Anthropic, OpenAI, etc.). All connected through Discord.
 
 ```
 ┌─────────────────────────────────────────┐
 │  Docker Network                         │
 │                                         │
-│  ZeroClaw ───► Cloud LLM API           │
+│  Nanobot ────► Cloud LLM API           │
 │      │         (Anthropic / OpenAI)     │
 │      │                                  │
 │      ├──────► Discord                   │
@@ -48,9 +48,9 @@ cp .env.example .env
 
 Edit `.env` with your tokens and API keys:
 ```
-DISCORD_BOT_TOKEN=your_zeroclaw_token_here
+DISCORD_BOT_TOKEN=your_nanobot_token_here
 DASHBOT_TOKEN=your_dashbot_token_here
-ZEROCLAW_PORT=8080
+NANOBOT_PORT=8080
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 ```
@@ -64,24 +64,24 @@ docker compose up -d --build
 ### 3. Verify
 
 Test in Discord:
-- Message ZeroClaw — it should respond via the cloud LLM
+- Message Nanobot — it should respond via the cloud LLM
 - `/status` — Dashboard Bot shows system health
 - `/tasks`, `/add`, `/done`, `/delete` — task management
 
 ## Switching providers / models
 
-Edit `zeroclaw/config.toml`:
-- Change `default_provider` to `"anthropic"` or `"openai"`
-- Change `default_model` to the model you want (e.g. `claude-sonnet-4-6`, `gpt-4o`)
+Edit `nanobot/config.yaml`:
+- Change `provider` to `"anthropic"` or `"openai"`
+- Change `model` to the model you want (e.g. `claude-sonnet-4-6`, `gpt-4o`)
 - Make sure the matching API key is set in `.env`
 
-Then restart: `docker compose restart zeroclaw`
+Then restart: `docker compose restart nanobot`
 
 ## Dashboard Bot commands
 
 | Command | Description |
 |---------|-------------|
-| `/status` | Show ZeroClaw config, provider, system info |
+| `/status` | Show Nanobot config, provider, system info |
 | `/tasks` | List all tasks (pending and completed) |
 | `/add <task>` | Add a new task |
 | `/done <id>` | Mark a task as completed |
