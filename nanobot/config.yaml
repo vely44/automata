@@ -1,6 +1,7 @@
 # Nanobot Configuration
 # =====================
 # Ultra-lightweight Python AI agent with Discord support
+# Note: Discord token is read from DISCORD_BOT_TOKEN environment variable
 
 # LLM Provider Configuration
 llm:
@@ -12,7 +13,7 @@ llm:
 # Discord Channel Configuration
 discord:
   enabled: true
-  token: "${DISCORD_BOT_TOKEN}"
+  # Token is passed via DISCORD_BOT_TOKEN environment variable
   intents:
     - "message_content"
     - "messages"

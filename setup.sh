@@ -14,42 +14,95 @@ warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
 error()   { echo -e "${RED}[ERROR]${RESET} $*" >&2; exit 1; }
 section() { echo -e "\n${BOLD}═══ $* ═══${RESET}"; }
 
+# ── Detect Linux distro ──────────────────────────────────────────────────────
+detect_distro() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        echo "${ID:-unknown}"
+    else
+        echo "unknown"
+    fi
+}
+
+DISTRO=$(detect_distro)
+
 # ── Step 1: Docker check / install ───────────────────────────────────────────
 section "Step 1 — Docker"
 
 if docker --version &>/dev/null && docker compose version &>/dev/null; then
     ok "Docker $(docker --version | awk '{print $3}' | tr -d ',') already installed"
 else
-    warn "Docker not found. Installing now (Ubuntu/Debian)..."
+    warn "Docker not found. Installing now..."
 
-    # Remove legacy packages silently
-    sudo apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+    case "$DISTRO" in
+        ubuntu|debian)
+            # Ubuntu/Debian
+            sudo apt-get remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ca-certificates curl gnupg
 
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq ca-certificates curl gnupg
+            sudo install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+                | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            sudo chmod a+r /etc/apt/keyrings/docker.gpg
 
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
-
-    # Support both Ubuntu and Linux Mint (which reports UBUNTU_CODENAME)
-    CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-$(lsb_release -cs)}}")
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+            CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-$(lsb_release -cs)}}")
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
 https://download.docker.com/linux/ubuntu ${CODENAME} stable" \
-        | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq \
-        docker-ce docker-ce-cli containerd.io \
-        docker-buildx-plugin docker-compose-plugin
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq \
+                docker-ce docker-ce-cli containerd.io \
+                docker-buildx-plugin docker-compose-plugin
+            ;;
+        fedora)
+            # Fedora/RHEL/CentOS
+            sudo dnf remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+            sudo dnf install -y -q dnf-plugins-core
+            sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+            sudo dnf install -y -q docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            ;;
+        *)
+            error "Unsupported Linux distribution: $DISTRO. Please install Docker manually from https://docs.docker.com/install/"
+            ;;
+    esac
 
-    # Add current user to docker group so sudo isn't needed next time
+    # Add current user to docker group
     sudo usermod -aG docker "$USER" 2>/dev/null || true
 
     ok "Docker installed."
     warn "You may need to log out and back in (or run 'newgrp docker') for"
     warn "group changes to take effect. For this session, commands will use sudo."
+fi
+
+# ── Step 1.5: Python check (optional, for local scripts) ────────────────────
+section "Step 1.5 — Python"
+
+if python3 --version &>/dev/null; then
+    PYTHON_VERSION=$(python3 --version | awk '{print $2}')
+    ok "Python 3 ($PYTHON_VERSION) found"
+else
+    warn "Python 3 not found. Installing..."
+
+    case "$DISTRO" in
+        ubuntu|debian)
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq python3 python3-pip
+            ;;
+        fedora)
+            sudo dnf install -y -q python3 python3-pip
+            ;;
+        *)
+            warn "Could not auto-install Python 3. Please install manually."
+            ;;
+    esac
+
+    if python3 --version &>/dev/null; then
+        ok "Python 3 installed"
+    else
+        warn "Python 3 still not available. The Docker containers include Python, so this is optional."
+    fi
 fi
 
 # ── Step 2: .env setup ───────────────────────────────────────────────────────

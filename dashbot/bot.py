@@ -12,17 +12,14 @@ Commands:
 """
 
 import os
-import asyncio
 from datetime import datetime
 
 import discord
 from discord import app_commands
 import aiosqlite
-import httpx
 
 # Configuration from environment
 DISCORD_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-NANOBOT_URL = os.getenv("NANOBOT_URL", "http://nanobot:8080")
 DATABASE_PATH = "/app/data/tasks.db"
 NANOBOT_CONFIG_PATH = "/app/nanobot-config.yaml"
 
@@ -93,20 +90,8 @@ async def delete_task(task_id: int):
 
 
 # ============================================================
-# Health Check Functions
+# Config Functions
 # ============================================================
-
-async def check_nanobot_health():
-    """Check Nanobot API health."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as http:
-            response = await http.get(f"{NANOBOT_URL}/health")
-            if response.status_code == 200:
-                return {"status": "online"}
-            return {"status": "error", "code": response.status_code}
-    except Exception as e:
-        return {"status": "offline", "error": str(e)}
-
 
 def read_nanobot_config():
     """Read Nanobot config file."""
@@ -132,39 +117,34 @@ def read_nanobot_config():
 # Discord Commands
 # ============================================================
 
-@tree.command(name="status", description="Show system status and health")
+@tree.command(name="status", description="Show dashboard status and task summary")
 async def status_command(interaction: discord.Interaction):
-    """Display system status including Nanobot info."""
+    """Display dashboard status and task summary."""
     await interaction.response.defer()
 
-    # Check Nanobot
-    nb_health = await check_nanobot_health()
-
-    # Read Nanobot config
+    # Read Nanobot config (for informational display)
     nb_config = read_nanobot_config()
 
     # Build embed
-    is_healthy = nb_health["status"] == "online"
     embed = discord.Embed(
-        title="System Status",
-        color=discord.Color.green() if is_healthy else discord.Color.red(),
+        title="Dashboard Status",
+        color=discord.Color.blue(),
         timestamp=datetime.now()
     )
 
-    # Nanobot status
-    nb_status = "Online" if is_healthy else "Offline"
+    # Nanobot config info
     if "error" not in nb_config:
         provider = nb_config.get("provider", "unknown")
         model = nb_config.get("model", "unknown")
         embed.add_field(
-            name="Nanobot",
-            value=f"Status: {nb_status}\nProvider: `{provider}`\nModel: `{model}`",
+            name="Nanobot Config",
+            value=f"Provider: `{provider}`\nModel: `{model}`",
             inline=False
         )
     else:
         embed.add_field(
-            name="Nanobot",
-            value=f"Status: {nb_status}\nConfig error: {nb_config['error']}",
+            name="Nanobot Config",
+            value=f"Error: {nb_config['error']}",
             inline=False
         )
 

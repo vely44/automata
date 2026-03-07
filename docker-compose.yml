@@ -4,8 +4,6 @@ services:
       context: ./nanobot
       dockerfile: Dockerfile
     container_name: nanobot
-    ports:
-      - "${NANOBOT_PORT:-8080}:8080"
     volumes:
       - ./nanobot/config.yaml:/app/config.yaml:ro
       - ./nanobot/workspace:/app/workspace
@@ -14,6 +12,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     restart: unless-stopped
+    networks:
+      - automata-network
+
   dashbot:
     build:
       context: ./dashbot
@@ -24,5 +25,10 @@ services:
       - ./nanobot/config.yaml:/app/nanobot-config.yaml:ro
     environment:
       - DISCORD_BOT_TOKEN=${DASHBOT_TOKEN}
-      - NANOBOT_URL=http://nanobot:8080
     restart: unless-stopped
+    networks:
+      - automata-network
+
+networks:
+  automata-network:
+    driver: bridge
