@@ -26,7 +26,7 @@ Follow the prompts. You'll be asked 4-5 questions, then everything is set up aut
 2. **An LLM API key** (choose one)
    - **Anthropic (Claude)**: [https://console.anthropic.com/account/keys](https://console.anthropic.com/account/keys) — **Recommended**
    - **OpenAI (GPT-4)**: [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
-   - **Other providers**: Ollama, Groq, Together.ai, or any custom LLM endpoint
+   - **Other providers**: Groq, Together.ai, Mistral, or any custom LLM API
 
 3. **~600 MB free disk space**
 
@@ -69,7 +69,7 @@ The script asks for:
    - Choose Anthropic (Claude), OpenAI, or a custom provider
    - Paste your API key
    - At least one is required
-   - Custom providers: Ollama (local), Groq, Together.ai, etc.
+   - Custom providers: Groq, Together.ai, Mistral, etc.
 
 ### Step 4: Installation Location (Optional)
 - Default: Current directory
@@ -367,21 +367,21 @@ llm:
 
 Make sure your `.env` has `OPENAI_API_KEY=sk-...` set.
 
-### Use a Custom LLM Provider (Ollama, Groq, etc.)
+### Use a Custom LLM Provider (Groq, Together.ai, etc.)
 
-If you're using a custom LLM provider (local Ollama, Groq, Together.ai, etc.):
+If you're using a custom LLM provider (Groq, Together.ai, Mistral, or other APIs):
 
 1. Set environment variables in `.env`:
 ```
-LLM_PROVIDER=ollama
-LLM_API_KEY=http://localhost:11434  # For Ollama, or your provider's endpoint
+LLM_PROVIDER=groq
+LLM_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx  # Your provider's API key
 ```
 
 2. Update `nanobot/config.yaml`:
 ```yaml
 llm:
-  provider: "ollama"  # Your custom provider name
-  model: "mistral"    # Your model name
+  provider: "groq"     # Your custom provider name
+  model: "mixtral-8x7b-32768"  # Your model name from the provider
   temperature: 0.7
   max_tokens: 4096
 ```
@@ -391,7 +391,7 @@ llm:
 docker compose restart nanobot
 ```
 
-**Note:** For local providers like Ollama, ensure the service is running and accessible from the Docker container.
+**Note:** Make sure your API key is valid and the model name is correct for your chosen provider.
 
 ### Allow More Commands (⚠️ less safe)
 
