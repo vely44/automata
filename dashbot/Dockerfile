@@ -27,7 +27,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Health check: verify Python can import required modules
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import discord, aiosqlite, httpx; print('OK')" || exit 1
+    CMD python -c "import discord, aiosqlite; print('OK')" || exit 1
 
 # Run the dashboard bot
 CMD ["python", "bot.py"]
