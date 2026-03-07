@@ -157,6 +157,7 @@ echo ""
 echo -e "${BOLD}Where to get LLM API key:${RESET}"
 echo "  • Anthropic (Claude): https://console.anthropic.com/account/keys"
 echo "  • OpenAI: https://platform.openai.com/account/api-keys"
+echo "  • Other providers: Groq, Together.ai, Mistral, etc."
 echo ""
 
 read -rp "Nanobot Discord token: " DISCORD_BOT_TOKEN
@@ -169,22 +170,31 @@ echo ""
 echo "Which LLM would you like to use?"
 echo "  1) Anthropic (Claude) — recommended"
 echo "  2) OpenAI (GPT-4)"
+echo "  3) Other provider (custom API)"
 echo ""
-read -rp "Enter your choice (1 or 2): " LLM_CHOICE
+read -rp "Enter your choice (1, 2, or 3): " LLM_CHOICE
+
+ANTHROPIC_API_KEY=""
+OPENAI_API_KEY=""
+LLM_PROVIDER=""
+LLM_API_KEY=""
 
 case "$LLM_CHOICE" in
     1)
         read -rsp "Anthropic API key (paste and press Enter): " ANTHROPIC_API_KEY
-        OPENAI_API_KEY=""
         echo ""
         ;;
     2)
         read -rsp "OpenAI API key (paste and press Enter): " OPENAI_API_KEY
-        ANTHROPIC_API_KEY=""
+        echo ""
+        ;;
+    3)
+        read -rp "LLM provider name (e.g., groq, together, mistral): " LLM_PROVIDER
+        read -rsp "API key (paste and press Enter): " LLM_API_KEY
         echo ""
         ;;
     *)
-        exit_error "Invalid choice. Please run the installer again and select 1 or 2."
+        exit_error "Invalid choice. Please run the installer again and select 1, 2, or 3."
         ;;
 esac
 
@@ -222,9 +232,12 @@ echo "  Dashboard token:       ${DASHBOT_TOKEN:0:10}...****"
 if [[ -n "$ANTHROPIC_API_KEY" ]]; then
     echo "  LLM:                   Anthropic (Claude)"
     echo "  Anthropic key:         ${ANTHROPIC_API_KEY:0:10}...****"
-else
+elif [[ -n "$OPENAI_API_KEY" ]]; then
     echo "  LLM:                   OpenAI (GPT-4)"
     echo "  OpenAI key:            ${OPENAI_API_KEY:0:10}...****"
+elif [[ -n "$LLM_PROVIDER" ]]; then
+    echo "  LLM:                   Custom ($LLM_PROVIDER)"
+    echo "  API key:               ${LLM_API_KEY:0:10}...****"
 fi
 echo ""
 
@@ -257,6 +270,8 @@ DASHBOT_TOKEN=$DASHBOT_TOKEN
 # LLM API Keys
 ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
 OPENAI_API_KEY=$OPENAI_API_KEY
+LLM_PROVIDER=$LLM_PROVIDER
+LLM_API_KEY=$LLM_API_KEY
 EOF
 
 log_ok ".env file created"

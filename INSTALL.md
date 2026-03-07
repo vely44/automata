@@ -26,6 +26,7 @@ Follow the prompts. You'll be asked 4-5 questions, then everything is set up aut
 2. **An LLM API key** (choose one)
    - **Anthropic (Claude)**: [https://console.anthropic.com/account/keys](https://console.anthropic.com/account/keys) — **Recommended**
    - **OpenAI (GPT-4)**: [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
+   - **Other providers**: Groq, Together.ai, Mistral, or any custom LLM API
 
 3. **~600 MB free disk space**
 
@@ -65,9 +66,10 @@ The script asks for:
    - Press Enter to reuse the same one (recommended for simplicity)
 
 3. **LLM API Key**
-   - Choose Anthropic (Claude) or OpenAI
+   - Choose Anthropic (Claude), OpenAI, or a custom provider
    - Paste your API key
    - At least one is required
+   - Custom providers: Groq, Together.ai, Mistral, etc.
 
 ### Step 4: Installation Location (Optional)
 - Default: Current directory
@@ -96,6 +98,25 @@ The script asks for:
 ### Step 9: Success
 - Prints next steps for using the system
 - Shows useful Docker commands for troubleshooting
+
+---
+
+## Understanding the Architecture
+
+### Two Bots, Two Jobs
+
+**Nanobot** (the AI agent):
+- Connects to Discord and listens for mentions (e.g., `@Nanobot hello`)
+- Sends messages to a cloud LLM (Claude or GPT-4)
+- Can execute commands: bash scripts, git operations, file management
+- Runs in a **sandbox** — only allowed commands work, dangerous paths are blocked
+- Has **memory** — remembers your last 100 interactions in SQLite database
+- Can be **autonomous** or **supervised** (you control how much it can do)
+
+**Dashboard Bot** (the helper):
+- Shows system health and status (`/status` command)
+- Manages a task list (`/tasks`, `/add`, `/done`, `/delete`)
+- Runs independently from Nanobot
 
 ---
 
@@ -133,6 +154,349 @@ Once the bot is in your Discord server:
    - Use `/add <task>` to add new tasks
    - Use `/done <id>` to mark tasks complete
    - Use `/delete <id>` to remove tasks
+
+---
+
+## What Can Nanobot Actually Do?
+
+Nanobot is more than just a chatbot — it can execute real commands on your system.
+
+### Nanobot Capabilities
+
+Nanobot has access to these tools (in a **sandboxed** environment):
+
+| Tool | What it can do | Examples |
+|------|---|---|
+| **bash** | Run shell commands safely | `ls`, `cat`, `grep`, `mkdir`, `cp`, `mv` |
+| **git** | Clone, commit, push repos | `git clone`, `git status`, `git commit -m "msg"` |
+| **file_operations** | Create, read, edit files | Can't access `/etc`, `/root`, `/proc`, `/sys` (forbidden) |
+
+### Real Examples
+
+**Example 1: Clone a repo and show its structure**
+```
+@Nanobot clone https://github.com/example/project and show me the file structure
+```
+Nanobot will:
+1. Run `git clone https://github.com/example/project`
+2. Run `ls -la project/` to show the structure
+3. Report back in Discord
+
+**Example 2: Count lines of code**
+```
+@Nanobot count lines of Python code in the repo you just cloned
+```
+Nanobot will:
+1. Run `find project -name "*.py" -type f`
+2. Run `wc -l` on each file
+3. Give you a summary
+
+**Example 3: Search for something**
+```
+@Nanobot grep for "TODO" in the project and tell me what needs to be done
+```
+Nanobot will:
+1. Run `grep -r "TODO" project/`
+2. Analyze the results
+3. Summarize what needs fixing
+
+### Sandbox Security Model
+
+Nanobot **cannot**:
+- Access system files (`/etc`, `/root`, `/proc`, `/sys`)
+- Run dangerous commands directly (only allowed list works)
+- Access files outside the workspace
+- Write to protected directories
+
+This keeps your system safe while still being powerful.
+
+---
+
+## Customizing Nanobot
+
+After installation, you can customize how Nanobot behaves by editing `nanobot/config.yaml`.
+
+### Edit the Configuration File
+
+```bash
+nano nanobot/config.yaml
+```
+
+### Configuration Options Explained
+
+#### **LLM Provider** (which AI model to use)
+
+```yaml
+llm:
+  provider: "anthropic"  # "anthropic", "openai", or custom provider name
+  model: "claude-sonnet-4-6"  # Change to gpt-4o for OpenAI or your custom model
+  temperature: 0.7       # 0=deterministic, 1=creative (0-1)
+  max_tokens: 4096       # Max response length
+```
+
+**What these mean:**
+- `provider`: Which service to call (Anthropic's Claude, OpenAI's GPT, or custom provider)
+- `model`: Specific version (e.g., `claude-sonnet-4-6`, `gpt-4o`, or custom model name)
+- `temperature`: How "creative" the responses are. 0 = always the same, 1 = random. **0.7 is recommended**
+- `max_tokens`: Character limit per response (more = slower, costs more)
+
+**Examples:**
+```yaml
+# Fast, cheap, deterministic
+provider: "anthropic"
+model: "claude-haiku-4-5-20251001"
+temperature: 0.3
+max_tokens: 2048
+
+# Slow, expensive, creative
+provider: "openai"
+model: "gpt-4o"
+temperature: 0.9
+max_tokens: 8000
+```
+
+#### **Memory** (remembering past conversations)
+
+```yaml
+memory:
+  backend: "sqlite"
+  db_path: "/app/workspace/memory.db"
+  max_history: 100  # Remember last 100 messages
+```
+
+**What this does:**
+- Nanobot remembers your last 100 interactions
+- Older messages are forgotten (memory is cleared)
+- Useful for multi-turn conversations
+- Change `max_history` to remember more (uses more disk) or less
+
+#### **Tools** (what commands Nanobot can run)
+
+```yaml
+tools:
+  enabled_tools:
+    - "bash"
+    - "git"
+    - "file_operations"
+  sandbox_mode: true  # Keep this ON for safety
+  allowed_commands:
+    - "git"
+    - "npm"
+    - "ls"
+    - "cat"
+    - "grep"
+    - "mkdir"
+    - "cp"
+    - "mv"
+  forbidden_paths:
+    - "/etc"
+    - "/root"
+    - "/proc"
+    - "/sys"
+```
+
+**What this does:**
+- `enabled_tools`: Which tool categories are available
+- `sandbox_mode`: **Keep this TRUE** — it prevents dangerous operations
+- `allowed_commands`: Whitelist of commands Nanobot can run
+- `forbidden_paths`: Directories Nanobot cannot access
+
+**⚠️ Security Note:** Don't disable `sandbox_mode` — it protects your system.
+
+#### **Autonomy** (how independent Nanobot can be)
+
+```yaml
+autonomy:
+  level: "supervised"  # "supervised" or "autonomous"
+  max_actions_per_hour: 20
+  max_cost_per_day_cents: 500
+```
+
+**What this does:**
+- `level: "supervised"`: Nanobot asks before taking actions (safer)
+- `level: "autonomous"`: Nanobot acts on its own (faster, riskier)
+- `max_actions_per_hour`: Prevents runaway commands (20 per hour default)
+- `max_cost_per_day_cents`: Stops if API costs exceed $5/day (prevents bill shock)
+
+**Recommended:** Keep `"supervised"` until you trust Nanobot.
+
+### Apply Changes
+
+After editing `config.yaml`, restart Nanobot:
+
+```bash
+docker compose restart nanobot
+```
+
+The changes take effect immediately.
+
+---
+
+## Common Customization Examples
+
+### Make Nanobot Faster (Cheaper)
+
+Edit `nanobot/config.yaml`:
+```yaml
+llm:
+  provider: "anthropic"
+  model: "claude-haiku-4-5-20251001"  # Smallest, fastest model
+  temperature: 0.5
+  max_tokens: 2048
+```
+
+### Make Nanobot Smarter (Slower, More Expensive)
+
+```yaml
+llm:
+  provider: "anthropic"
+  model: "claude-opus-4-6"  # Largest, smartest model
+  temperature: 0.7
+  max_tokens: 8000
+```
+
+### Switch to OpenAI GPT-4
+
+```yaml
+llm:
+  provider: "openai"
+  model: "gpt-4o"
+  temperature: 0.7
+  max_tokens: 4096
+```
+
+Make sure your `.env` has `OPENAI_API_KEY=sk-...` set.
+
+### Use a Custom LLM Provider (Groq, Together.ai, etc.)
+
+If you're using a custom LLM provider (Groq, Together.ai, Mistral, or other APIs):
+
+1. Set environment variables in `.env`:
+```
+LLM_PROVIDER=groq
+LLM_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx  # Your provider's API key
+```
+
+2. Update `nanobot/config.yaml`:
+```yaml
+llm:
+  provider: "groq"     # Your custom provider name
+  model: "mixtral-8x7b-32768"  # Your model name from the provider
+  temperature: 0.7
+  max_tokens: 4096
+```
+
+3. Restart:
+```bash
+docker compose restart nanobot
+```
+
+**Note:** Make sure your API key is valid and the model name is correct for your chosen provider.
+
+### Allow More Commands (⚠️ less safe)
+
+If you need specific commands, add them to `allowed_commands`:
+
+```yaml
+tools:
+  allowed_commands:
+    - "git"
+    - "npm"
+    - "ls"
+    - "cat"
+    - "grep"
+    - "mkdir"
+    - "cp"
+    - "mv"
+    - "python"  # Add this if you want Python script execution
+    - "node"    # Add this if you want Node.js scripts
+```
+
+Then restart: `docker compose restart nanobot`
+
+### Let Nanobot Act Autonomously (⚠️ less safe)
+
+Only do this if you fully trust it:
+
+```yaml
+autonomy:
+  level: "autonomous"  # Be careful!
+  max_actions_per_hour: 50
+  max_cost_per_day_cents: 1000
+```
+
+---
+
+## Next Steps & What To Try
+
+After customizing Nanobot, here are things you can try:
+
+### 1. Start Simple
+```
+@Nanobot hello, what can you do?
+```
+Let it explain its capabilities.
+
+### 2. Give It a Project Task
+```
+@Nanobot clone https://github.com/example/repo and summarize what it does
+```
+
+### 3. Use It For Code Tasks
+```
+@Nanobot create a Python script that converts CSV to JSON
+```
+
+### 4. Combine With Task Manager
+```
+/add Learn Docker basics
+```
+Then:
+```
+@Nanobot help me understand Docker, and add relevant resources to the task list
+```
+
+### 5. Monitor Its Performance
+```
+/status
+```
+Check which LLM model is running, and how much cost you've incurred.
+
+---
+
+## Where Are the Workspace Files?
+
+Nanobot saves all its work in `nanobot/workspace/`:
+
+```
+nanobot/
+├── workspace/
+│   ├── memory.db      # Past conversations (searchable)
+│   ├── projects/      # Any projects Nanobot creates
+│   └── artifacts/     # Generated files
+├── config.yaml        # ← You can edit this
+└── ...
+```
+
+You can manually browse or edit files in `workspace/` if needed.
+
+---
+
+## Advanced: Checking Logs
+
+To see what Nanobot is actually doing:
+
+```bash
+docker compose logs -f nanobot
+```
+
+This shows:
+- Every message received
+- Which LLM was called
+- What commands were executed
+- Any errors
+
+Useful for debugging or learning how it works.
 
 ---
 
@@ -191,6 +555,8 @@ DISCORD_BOT_TOKEN=<your nanobot token>
 DASHBOT_TOKEN=<your dashboard token>
 ANTHROPIC_API_KEY=<your Anthropic key if using Claude>
 OPENAI_API_KEY=<your OpenAI key if using GPT-4>
+LLM_PROVIDER=<custom provider name, if using custom LLM>
+LLM_API_KEY=<custom provider API key or endpoint>
 ```
 
 **Keep this file private** — it contains credentials. Never commit it to Git (it's in `.gitignore` by default).
