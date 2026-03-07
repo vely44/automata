@@ -1,6 +1,31 @@
+# Environment
 .env
+
+# Logs and temp files
 *.log
 tests.txt
+
+# Database files
 *.db
 *.db-shm
 *.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
