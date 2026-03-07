@@ -26,6 +26,7 @@ Follow the prompts. You'll be asked 4-5 questions, then everything is set up aut
 2. **An LLM API key** (choose one)
    - **Anthropic (Claude)**: [https://console.anthropic.com/account/keys](https://console.anthropic.com/account/keys) — **Recommended**
    - **OpenAI (GPT-4)**: [https://platform.openai.com/account/api-keys](https://platform.openai.com/account/api-keys)
+   - **Other providers**: Ollama, Groq, Together.ai, or any custom LLM endpoint
 
 3. **~600 MB free disk space**
 
@@ -65,9 +66,10 @@ The script asks for:
    - Press Enter to reuse the same one (recommended for simplicity)
 
 3. **LLM API Key**
-   - Choose Anthropic (Claude) or OpenAI
+   - Choose Anthropic (Claude), OpenAI, or a custom provider
    - Paste your API key
    - At least one is required
+   - Custom providers: Ollama (local), Groq, Together.ai, etc.
 
 ### Step 4: Installation Location (Optional)
 - Default: Current directory
@@ -226,15 +228,15 @@ nano nanobot/config.yaml
 
 ```yaml
 llm:
-  provider: "anthropic"  # "anthropic" or "openai"
-  model: "claude-sonnet-4-6"  # Change to gpt-4o for OpenAI
+  provider: "anthropic"  # "anthropic", "openai", or custom provider name
+  model: "claude-sonnet-4-6"  # Change to gpt-4o for OpenAI or your custom model
   temperature: 0.7       # 0=deterministic, 1=creative (0-1)
   max_tokens: 4096       # Max response length
 ```
 
 **What these mean:**
-- `provider`: Which service to call (Anthropic's Claude or OpenAI's GPT)
-- `model`: Specific version (e.g., `claude-sonnet-4-6`, `gpt-4o`)
+- `provider`: Which service to call (Anthropic's Claude, OpenAI's GPT, or custom provider)
+- `model`: Specific version (e.g., `claude-sonnet-4-6`, `gpt-4o`, or custom model name)
 - `temperature`: How "creative" the responses are. 0 = always the same, 1 = random. **0.7 is recommended**
 - `max_tokens`: Character limit per response (more = slower, costs more)
 
@@ -364,6 +366,32 @@ llm:
 ```
 
 Make sure your `.env` has `OPENAI_API_KEY=sk-...` set.
+
+### Use a Custom LLM Provider (Ollama, Groq, etc.)
+
+If you're using a custom LLM provider (local Ollama, Groq, Together.ai, etc.):
+
+1. Set environment variables in `.env`:
+```
+LLM_PROVIDER=ollama
+LLM_API_KEY=http://localhost:11434  # For Ollama, or your provider's endpoint
+```
+
+2. Update `nanobot/config.yaml`:
+```yaml
+llm:
+  provider: "ollama"  # Your custom provider name
+  model: "mistral"    # Your model name
+  temperature: 0.7
+  max_tokens: 4096
+```
+
+3. Restart:
+```bash
+docker compose restart nanobot
+```
+
+**Note:** For local providers like Ollama, ensure the service is running and accessible from the Docker container.
 
 ### Allow More Commands (⚠️ less safe)
 
@@ -527,6 +555,8 @@ DISCORD_BOT_TOKEN=<your nanobot token>
 DASHBOT_TOKEN=<your dashboard token>
 ANTHROPIC_API_KEY=<your Anthropic key if using Claude>
 OPENAI_API_KEY=<your OpenAI key if using GPT-4>
+LLM_PROVIDER=<custom provider name, if using custom LLM>
+LLM_API_KEY=<custom provider API key or endpoint>
 ```
 
 **Keep this file private** — it contains credentials. Never commit it to Git (it's in `.gitignore` by default).

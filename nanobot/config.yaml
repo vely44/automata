@@ -4,8 +4,10 @@
 # Note: Discord token is read from DISCORD_BOT_TOKEN environment variable
 
 # LLM Provider Configuration
+# Supported providers: "anthropic", "openai", or any custom provider (e.g., "ollama", "groq")
+# For custom providers, set LLM_PROVIDER and LLM_API_KEY environment variables in .env
 llm:
-  provider: "anthropic"  # "anthropic" or "openai"
+  provider: "anthropic"  # "anthropic", "openai", or custom provider name
   model: "claude-sonnet-4-6"
   temperature: 0.7
   max_tokens: 4096
